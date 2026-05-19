@@ -1,0 +1,24 @@
+
+> ai-study-assistant@0.1.0 dev
+> next dev --hostname 127.0.0.1
+
+   ▲ Next.js 15.5.18
+   - Local:        http://127.0.0.1:3000
+   - Network:      http://127.0.0.1:3000
+
+ ✓ Starting...
+ ✓ Ready in 3s
+ ○ Compiling / ...
+ ✓ Compiled / in 3.4s (596 modules)
+ GET / 200 in 3905ms
+ ✓ Compiled in 99ms (234 modules)
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 614ms (660 modules)
+ ○ Compiling /_error ...
+ ✓ Compiled /_error in 1141ms (1007 modules)
+ GET /dashboard 500 in 3084ms
+ GET /dashboard 500 in 1252ms
+ GET /dashboard 500 in 868ms
+ GET /dashboard 500 in 717ms
+ GET /dashboard 500 in 305ms
+ ✓ Compiled in 160ms (556 modules)

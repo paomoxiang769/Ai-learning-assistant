@@ -1,0 +1,130 @@
+ ⨯ Error: Missing Supabase environment variables.
+    at eval (src\lib\supabase\server.ts:8:9)
+    at <unknown> (rsc)/./src/lib/supabase/server.ts (D:\AI Learning Assistant\.next\server\app\dashboard\page.js:118:1)
+    at eval (webpack-internal:///(rsc)/./src/app/dashboard/page.tsx:8:78)
+    at <unknown> (rsc)/./src/app/dashboard/page.tsx (D:\AI Learning Assistant\.next\server\app\dashboard\page.js:85:1)
+   6 |
+   7 | if (!supabaseUrl || !supabaseAnonKey) {
+>  8 |   throw new Error("Missing Supabase environment variables.");
+     |         ^
+   9 | }
+  10 |
+  11 | // Creates a Supabase client for Server Components and Server Actions.
+ ⨯ Error: Missing Supabase environment variables.
+    at eval (src\lib\supabase\server.ts:8:9)
+    at <unknown> (rsc)/./src/lib/supabase/server.ts (D:\AI Learning Assistant\.next\server\app\dashboard\page.js:118:1)
+    at eval (webpack-internal:///(rsc)/./src/app/dashboard/page.tsx:8:78)
+    at <unknown> (rsc)/./src/app/dashboard/page.tsx (D:\AI Learning Assistant\.next\server\app\dashboard\page.js:85:1)
+   6 |
+   7 | if (!supabaseUrl || !supabaseAnonKey) {
+>  8 |   throw new Error("Missing Supabase environment variables.");
+     |         ^
+   9 | }
+  10 |
+  11 | // Creates a Supabase client for Server Components and Server Actions. {
+  page: '/dashboard'
+}
+ ⨯ Error: Missing Supabase environment variables.
+    at eval (src\lib\supabase\server.ts:8:9)
+    at <unknown> (rsc)/./src/lib/supabase/server.ts (D:\AI Learning Assistant\.next\server\app\dashboard\page.js:118:1)
+    at eval (webpack-internal:///(rsc)/./src/app/dashboard/page.tsx:8:78)
+    at <unknown> (rsc)/./src/app/dashboard/page.tsx (D:\AI Learning Assistant\.next\server\app\dashboard\page.js:85:1)
+   6 |
+   7 | if (!supabaseUrl || !supabaseAnonKey) {
+>  8 |   throw new Error("Missing Supabase environment variables.");
+     |         ^
+   9 | }
+  10 |
+  11 | // Creates a Supabase client for Server Components and Server Actions.
+ ⨯ Error: Missing Supabase environment variables.
+    at eval (src\lib\supabase\server.ts:8:9)
+    at <unknown> (rsc)/./src/lib/supabase/server.ts (D:\AI Learning Assistant\.next\server\app\dashboard\page.js:118:1)
+    at eval (webpack-internal:///(rsc)/./src/app/dashboard/page.tsx:8:78)
+    at <unknown> (rsc)/./src/app/dashboard/page.tsx (D:\AI Learning Assistant\.next\server\app\dashboard\page.js:85:1)
+   6 |
+   7 | if (!supabaseUrl || !supabaseAnonKey) {
+>  8 |   throw new Error("Missing Supabase environment variables.");
+     |         ^
+   9 | }
+  10 |
+  11 | // Creates a Supabase client for Server Components and Server Actions. {
+  page: '/dashboard'
+}
+ ⨯ Error: Missing Supabase environment variables.
+    at eval (src\lib\supabase\server.ts:8:9)
+    at <unknown> (rsc)/./src/lib/supabase/server.ts (D:\AI Learning Assistant\.next\server\app\dashboard\page.js:118:1)
+    at eval (webpack-internal:///(rsc)/./src/app/dashboard/page.tsx:8:78)
+    at <unknown> (rsc)/./src/app/dashboard/page.tsx (D:\AI Learning Assistant\.next\server\app\dashboard\page.js:85:1)
+   6 |
+   7 | if (!supabaseUrl || !supabaseAnonKey) {
+>  8 |   throw new Error("Missing Supabase environment variables.");
+     |         ^
+   9 | }
+  10 |
+  11 | // Creates a Supabase client for Server Components and Server Actions.
+ ⨯ Error: Missing Supabase environment variables.
+    at eval (src\lib\supabase\server.ts:8:9)
+    at <unknown> (rsc)/./src/lib/supabase/server.ts (D:\AI Learning Assistant\.next\server\app\dashboard\page.js:118:1)
+    at eval (webpack-internal:///(rsc)/./src/app/dashboard/page.tsx:8:78)
+    at <unknown> (rsc)/./src/app/dashboard/page.tsx (D:\AI Learning Assistant\.next\server\app\dashboard\page.js:85:1)
+   6 |
+   7 | if (!supabaseUrl || !supabaseAnonKey) {
+>  8 |   throw new Error("Missing Supabase environment variables.");
+     |         ^
+   9 | }
+  10 |
+  11 | // Creates a Supabase client for Server Components and Server Actions. {
+  page: '/dashboard'
+}
+ ⨯ Error: Missing Supabase environment variables.
+    at eval (src\lib\supabase\server.ts:8:9)
+    at <unknown> (rsc)/./src/lib/supabase/server.ts (D:\AI Learning Assistant\.next\server\app\dashboard\page.js:118:1)
+    at eval (webpack-internal:///(rsc)/./src/app/dashboard/page.tsx:8:78)
+    at <unknown> (rsc)/./src/app/dashboard/page.tsx (D:\AI Learning Assistant\.next\server\app\dashboard\page.js:85:1)
+   6 |
+   7 | if (!supabaseUrl || !supabaseAnonKey) {
+>  8 |   throw new Error("Missing Supabase environment variables.");
+     |         ^
+   9 | }
+  10 |
+  11 | // Creates a Supabase client for Server Components and Server Actions.
+ ⨯ Error: Missing Supabase environment variables.
+    at eval (src\lib\supabase\server.ts:8:9)
+    at <unknown> (rsc)/./src/lib/supabase/server.ts (D:\AI Learning Assistant\.next\server\app\dashboard\page.js:118:1)
+    at eval (webpack-internal:///(rsc)/./src/app/dashboard/page.tsx:8:78)
+    at <unknown> (rsc)/./src/app/dashboard/page.tsx (D:\AI Learning Assistant\.next\server\app\dashboard\page.js:85:1)
+   6 |
+   7 | if (!supabaseUrl || !supabaseAnonKey) {
+>  8 |   throw new Error("Missing Supabase environment variables.");
+     |         ^
+   9 | }
+  10 |
+  11 | // Creates a Supabase client for Server Components and Server Actions. {
+  page: '/dashboard'
+}
+ ⨯ Error: Missing Supabase environment variables.
+    at eval (src\lib\supabase\server.ts:8:9)
+    at <unknown> (rsc)/./src/lib/supabase/server.ts (D:\AI Learning Assistant\.next\server\app\dashboard\page.js:118:1)
+    at eval (webpack-internal:///(rsc)/./src/app/dashboard/page.tsx:8:78)
+    at <unknown> (rsc)/./src/app/dashboard/page.tsx (D:\AI Learning Assistant\.next\server\app\dashboard\page.js:85:1)
+   6 |
+   7 | if (!supabaseUrl || !supabaseAnonKey) {
+>  8 |   throw new Error("Missing Supabase environment variables.");
+     |         ^
+   9 | }
+  10 |
+  11 | // Creates a Supabase client for Server Components and Server Actions.
+ ⨯ Error: Missing Supabase environment variables.
+    at eval (src\lib\supabase\server.ts:8:9)
+    at <unknown> (rsc)/./src/lib/supabase/server.ts (D:\AI Learning Assistant\.next\server\app\dashboard\page.js:118:1)
+    at eval (webpack-internal:///(rsc)/./src/app/dashboard/page.tsx:8:78)
+    at <unknown> (rsc)/./src/app/dashboard/page.tsx (D:\AI Learning Assistant\.next\server\app\dashboard\page.js:85:1)
+   6 |
+   7 | if (!supabaseUrl || !supabaseAnonKey) {
+>  8 |   throw new Error("Missing Supabase environment variables.");
+     |         ^
+   9 | }
+  10 |
+  11 | // Creates a Supabase client for Server Components and Server Actions. {
+  page: '/dashboard'
+}
