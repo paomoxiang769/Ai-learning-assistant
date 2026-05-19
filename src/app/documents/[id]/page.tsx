@@ -17,6 +17,8 @@ type DocumentRow = {
   file_path: string;
   file_type: string;
   created_at: string;
+  raw_text: string | null;
+  processing_status: "pending" | "completed" | "failed";
 };
 
 function formatUploadDate(value: string) {
@@ -24,6 +26,14 @@ function formatUploadDate(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function getRawTextPreview(rawText: string | null) {
+  if (!rawText) {
+    return "No parsed text is available yet.";
+  }
+
+  return rawText.slice(0, 500);
 }
 
 export default async function DocumentDetailPage({
@@ -43,7 +53,9 @@ export default async function DocumentDetailPage({
 
   const { data: document, error: documentError } = await supabase
     .from("documents")
-    .select("id, file_name, file_path, file_type, created_at")
+    .select(
+      "id, file_name, file_path, file_type, created_at, raw_text, processing_status",
+    )
     .eq("id", id)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -57,6 +69,8 @@ export default async function DocumentDetailPage({
   }
 
   const userDocument = document as DocumentRow;
+  const rawTextLength = userDocument.raw_text?.length ?? 0;
+  const rawTextPreview = getRawTextPreview(userDocument.raw_text);
 
   return (
     <main className="page">
@@ -80,6 +94,27 @@ export default async function DocumentDetailPage({
         <article className="card">
           <h2>Uploaded</h2>
           <p>{formatUploadDate(userDocument.created_at)}</p>
+        </article>
+        <article className="card">
+          <h2>Processing status</h2>
+          <p>{userDocument.processing_status}</p>
+        </article>
+        <article className="card">
+          <h2>Raw text length</h2>
+          <p>{rawTextLength} characters</p>
+        </article>
+      </section>
+
+      <section
+        className="list-section parsed-text-section"
+        aria-label="Parsed text preview"
+      >
+        <div className="section-heading">
+          <h2>Raw text preview</h2>
+          <p>First 500 characters</p>
+        </div>
+        <article className="card">
+          <p className="raw-text-preview">{rawTextPreview}</p>
         </article>
       </section>
 

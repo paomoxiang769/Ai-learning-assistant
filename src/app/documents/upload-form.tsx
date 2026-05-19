@@ -7,6 +7,21 @@ type UploadFormProps = {
   message?: string;
 };
 
+const ALLOWED_FILE_TYPES = new Set(["application/pdf", "text/plain"]);
+const ALLOWED_FILE_EXTENSIONS = [".pdf", ".txt"];
+
+function hasAllowedExtension(fileName: string) {
+  const lowerFileName = fileName.toLowerCase();
+
+  return ALLOWED_FILE_EXTENSIONS.some((extension) =>
+    lowerFileName.endsWith(extension),
+  );
+}
+
+function isAllowedDocumentFile(file: File) {
+  return ALLOWED_FILE_TYPES.has(file.type) || hasAllowedExtension(file.name);
+}
+
 export function UploadForm({ error, message }: UploadFormProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [clientError, setClientError] = useState("");
@@ -20,7 +35,13 @@ export function UploadForm({ error, message }: UploadFormProps) {
     const formData = new FormData(form);
     const file = formData.get("document");
 
-    if (!(file instanceof File) || file.size === 0) {
+    if (!(file instanceof File) || !file.name) {
+      setClientError("Please choose a PDF or TXT file to upload.");
+      setIsUploading(false);
+      return;
+    }
+
+    if (!isAllowedDocumentFile(file)) {
       setClientError("Please choose a PDF or TXT file to upload.");
       setIsUploading(false);
       return;
