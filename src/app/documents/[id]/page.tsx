@@ -18,6 +18,7 @@ type DocumentRow = {
   file_type: string;
   created_at: string;
   raw_text: string | null;
+  summary: string | null;
   processing_status: "pending" | "completed" | "failed";
 };
 
@@ -34,6 +35,14 @@ function getRawTextPreview(rawText: string | null) {
   }
 
   return rawText.slice(0, 500);
+}
+
+function getSummaryText(summary: string | null) {
+  if (!summary) {
+    return "AI summary is not available yet.";
+  }
+
+  return summary;
 }
 
 export default async function DocumentDetailPage({
@@ -54,7 +63,7 @@ export default async function DocumentDetailPage({
   const { data: document, error: documentError } = await supabase
     .from("documents")
     .select(
-      "id, file_name, file_path, file_type, created_at, raw_text, processing_status",
+      "id, file_name, file_path, file_type, created_at, raw_text, summary, processing_status",
     )
     .eq("id", id)
     .eq("user_id", user.id)
@@ -71,6 +80,7 @@ export default async function DocumentDetailPage({
   const userDocument = document as DocumentRow;
   const rawTextLength = userDocument.raw_text?.length ?? 0;
   const rawTextPreview = getRawTextPreview(userDocument.raw_text);
+  const summaryText = getSummaryText(userDocument.summary);
 
   return (
     <main className="page">
@@ -102,6 +112,19 @@ export default async function DocumentDetailPage({
         <article className="card">
           <h2>Raw text length</h2>
           <p>{rawTextLength} characters</p>
+        </article>
+      </section>
+
+      <section
+        className="list-section parsed-text-section"
+        aria-label="AI summary"
+      >
+        <div className="section-heading">
+          <h2>AI summary</h2>
+          <p>Generated from parsed text</p>
+        </div>
+        <article className="card">
+          <p className="raw-text-preview">{summaryText}</p>
         </article>
       </section>
 

@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { generateDocumentSummary } from "@/lib/ai-summary";
 import { extractDocumentText } from "@/lib/document-processing";
 import { createClient } from "@/lib/supabase/server";
 
@@ -15,6 +16,7 @@ type InsertedDocument = {
 type ProcessedDocumentCheck = {
   processing_status: string | null;
   raw_text: string | null;
+  summary: string | null;
 };
 
 function redirectToDocuments(request: NextRequest, params: Record<string, string>) {
@@ -148,11 +150,20 @@ export async function POST(request: NextRequest) {
 
   try {
     const rawText = await extractDocumentText(uploadedFile);
+    let summary: string | null = null;
+    let summaryErrorMessage: string | null = null;
+
+    try {
+      summary = await generateDocumentSummary(rawText);
+    } catch (error) {
+      summaryErrorMessage = getErrorMessage(error);
+    }
 
     const { error: updateError } = await supabase
       .from("documents")
       .update({
         raw_text: rawText,
+        summary,
         processing_status: "completed",
       })
       .eq("id", document.id)
@@ -175,7 +186,7 @@ export async function POST(request: NextRequest) {
     const { data: processedDocument, error: processedDocumentError } =
       await supabase
         .from("documents")
-        .select("processing_status, raw_text")
+        .select("processing_status, raw_text, summary")
         .eq("id", document.id)
         .eq("user_id", user.id)
         .maybeSingle();
@@ -187,15 +198,25 @@ export async function POST(request: NextRequest) {
     } else {
       const checkedDocument = processedDocument as ProcessedDocumentCheck | null;
       const persistedRawTextLength = checkedDocument?.raw_text?.length ?? 0;
+      const persistedSummary = checkedDocument?.summary ?? null;
+      const summaryDidNotPersist =
+        summary !== null && persistedSummary !== summary;
 
       if (
         checkedDocument?.processing_status !== "completed" ||
-        persistedRawTextLength !== rawText.length
+        persistedRawTextLength !== rawText.length ||
+        summaryDidNotPersist
       ) {
         return redirectToDocument(request, document.id, {
-          error: `Document update did not persist. Expected processing_status=completed and raw_text length=${rawText.length}, but read back processing_status=${checkedDocument?.processing_status ?? "missing"} and raw_text length=${persistedRawTextLength}. Check the Supabase RLS UPDATE policy for public.documents.`,
+          error: `Document update did not persist. Expected processing_status=completed, raw_text length=${rawText.length}${summary === null ? "" : ", and generated summary"}, but read back processing_status=${checkedDocument?.processing_status ?? "missing"}, raw_text length=${persistedRawTextLength}, and summary ${persistedSummary === null ? "missing" : "present"}. Check the Supabase RLS UPDATE policy for public.documents.`,
         });
       }
+    }
+
+    if (summaryErrorMessage) {
+      return redirectToDocument(request, document.id, {
+        error: `AI summary generation failed: ${summaryErrorMessage}`,
+      });
     }
   } catch (error) {
     const errorMessage = getErrorMessage(error);
