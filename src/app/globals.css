@@ -201,6 +201,10 @@ button.button {
   color: #047857;
 }
 
+.form-message.warning {
+  color: #b45309;
+}
+
 .list-section {
   display: grid;
   gap: 0.75rem;

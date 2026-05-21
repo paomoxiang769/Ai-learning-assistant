@@ -8,6 +8,7 @@ type DocumentDetailPageProps = {
   }>;
   searchParams: Promise<{
     error?: string;
+    warning?: string;
   }>;
 };
 
@@ -91,6 +92,7 @@ export default async function DocumentDetailPage({
       </section>
 
       {query.error ? <p className="form-message error">{query.error}</p> : null}
+      {query.warning ? <p className="form-message warning">{query.warning}</p> : null}
 
       <section className="grid grid-3" aria-label="Document details">
         <article className="card">

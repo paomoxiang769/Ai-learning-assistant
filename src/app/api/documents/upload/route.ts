@@ -1,6 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { generateDocumentSummary } from "@/lib/ai-summary";
 import { extractDocumentText } from "@/lib/document-processing";
+import { persistProcessedDocument } from "@/lib/document-upload-processing";
+import { generateEmbedding } from "@/lib/embedding";
+import { splitText } from "@/lib/text-chunker";
 import { createClient } from "@/lib/supabase/server";
 
 const DOCUMENTS_BUCKET = "documents";
@@ -11,12 +14,6 @@ export const runtime = "nodejs";
 
 type InsertedDocument = {
   id: string;
-};
-
-type ProcessedDocumentCheck = {
-  processing_status: string | null;
-  raw_text: string | null;
-  summary: string | null;
 };
 
 function redirectToDocuments(request: NextRequest, params: Record<string, string>) {
@@ -150,6 +147,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const rawText = await extractDocumentText(uploadedFile);
+    const chunks = splitText(rawText);
     let summary: string | null = null;
     let summaryErrorMessage: string | null = null;
 
@@ -158,65 +156,66 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       summaryErrorMessage = getErrorMessage(error);
     }
+    const persistenceResult = await persistProcessedDocument({
+      documentId: document.id,
+      rawText,
+      summary,
+      chunks,
+      generateChunkEmbedding: generateEmbedding,
+      persistence: {
+        async saveDocument(update) {
+          return await supabase
+            .from("documents")
+            .update(update)
+            .eq("id", document.id)
+            .eq("user_id", user.id);
+        },
+        async markFailed() {
+          return await supabase
+            .from("documents")
+            .update({ processing_status: "failed" })
+            .eq("id", document.id)
+            .eq("user_id", user.id);
+        },
+        async verifyDocument() {
+          return await supabase
+            .from("documents")
+            .select("processing_status, raw_text, summary")
+            .eq("id", document.id)
+            .eq("user_id", user.id)
+            .maybeSingle();
+        },
+        async insertChunks(chunkRows) {
+          return await supabase.from("document_chunks").insert(chunkRows);
+        },
+        async updateChunkEmbedding(update) {
+          return await supabase
+            .from("document_chunks")
+            .update({ embedding: update.embedding })
+            .eq("id", update.id)
+            .eq("document_id", document.id);
+        },
+      },
+    });
 
-    const { error: updateError } = await supabase
-      .from("documents")
-      .update({
-        raw_text: rawText,
-        summary,
-        processing_status: "completed",
-      })
-      .eq("id", document.id)
-      .eq("user_id", user.id);
-
-    if (updateError) {
-      const { error: failedStatusError } = await supabase
-        .from("documents")
-        .update({ processing_status: "failed" })
-        .eq("id", document.id)
-        .eq("user_id", user.id);
-
+    if (persistenceResult.error) {
       return redirectToDocument(request, document.id, {
-        error: failedStatusError
-          ? `Document uploaded, but extracted text could not be saved: ${updateError.message}. Failed to mark document as failed: ${failedStatusError.message}`
-          : `Document uploaded, but extracted text could not be saved: ${updateError.message}`,
+        error: persistenceResult.error,
       });
     }
 
-    const { data: processedDocument, error: processedDocumentError } =
-      await supabase
-        .from("documents")
-        .select("processing_status, raw_text, summary")
-        .eq("id", document.id)
-        .eq("user_id", user.id)
-        .maybeSingle();
+    if (summaryErrorMessage || persistenceResult.warning) {
+      const params: Record<string, string> = {};
 
-    if (processedDocumentError) {
-      return redirectToDocument(request, document.id, {
-        error: `Document update verification failed: ${processedDocumentError.message}`,
-      });
-    } else {
-      const checkedDocument = processedDocument as ProcessedDocumentCheck | null;
-      const persistedRawTextLength = checkedDocument?.raw_text?.length ?? 0;
-      const persistedSummary = checkedDocument?.summary ?? null;
-      const summaryDidNotPersist =
-        summary !== null && persistedSummary !== summary;
-
-      if (
-        checkedDocument?.processing_status !== "completed" ||
-        persistedRawTextLength !== rawText.length ||
-        summaryDidNotPersist
-      ) {
-        return redirectToDocument(request, document.id, {
-          error: `Document update did not persist. Expected processing_status=completed, raw_text length=${rawText.length}${summary === null ? "" : ", and generated summary"}, but read back processing_status=${checkedDocument?.processing_status ?? "missing"}, raw_text length=${persistedRawTextLength}, and summary ${persistedSummary === null ? "missing" : "present"}. Check the Supabase RLS UPDATE policy for public.documents.`,
-        });
+      if (summaryErrorMessage) {
+        params.error = `AI summary generation failed: ${summaryErrorMessage}`;
       }
-    }
 
-    if (summaryErrorMessage) {
-      return redirectToDocument(request, document.id, {
-        error: `AI summary generation failed: ${summaryErrorMessage}`,
-      });
+      if (persistenceResult.warning) {
+        params.warning = persistenceResult.warning;
+      }
+
+      return redirectToDocument(request, document.id, params);
     }
   } catch (error) {
     const errorMessage = getErrorMessage(error);
