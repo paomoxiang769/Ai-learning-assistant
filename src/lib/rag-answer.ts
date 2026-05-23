@@ -1,0 +1,180 @@
+import OpenAI from "openai";
+import { fetch as undiciFetch, ProxyAgent } from "undici";
+import type { RetrievedChunk } from "./retrieval.ts";
+import { retrieveRelevantChunks } from "./retrieval.ts";
+
+const DEFAULT_ANSWER_MODEL = "gpt-4o-mini";
+export const MATERIAL_DOES_NOT_MENTION_IT_MESSAGE =
+  "The material does not mention it.";
+
+type FetchInitWithDispatcher = RequestInit & {
+  dispatcher?: ProxyAgent;
+};
+
+type RagAnswerResult = {
+  answer: string;
+  chunks: RetrievedChunk[];
+};
+
+type RagAnswerOptions = {
+  documentId?: string;
+  topK?: number;
+};
+
+type RagAnswerDependencies = {
+  retrieveRelevantChunks(
+    query: string,
+    documentId?: string,
+    topK?: number,
+  ): Promise<RetrievedChunk[]>;
+  generateAnswerFromChunks?(
+    question: string,
+    chunks: RetrievedChunk[],
+  ): Promise<string>;
+};
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Unknown error";
+}
+
+function getProxyUrl() {
+  return process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
+}
+
+function createProxyFetch(proxyUrl: string): typeof fetch {
+  const dispatcher = new ProxyAgent(proxyUrl);
+
+  return ((input, init) =>
+    undiciFetch(input as Parameters<typeof undiciFetch>[0], {
+      ...init,
+      dispatcher,
+    } as unknown as Parameters<typeof undiciFetch>[1]) as unknown as ReturnType<
+      typeof fetch
+    >) as typeof fetch;
+}
+
+function createOpenAiClient(apiKey: string) {
+  const proxyUrl = getProxyUrl();
+
+  return new OpenAI({
+    apiKey,
+    baseURL: process.env.OPENAI_BASE_URL,
+    fetch: proxyUrl ? createProxyFetch(proxyUrl) : undefined,
+  });
+}
+
+function formatChunksForPrompt(chunks: RetrievedChunk[]) {
+  return chunks
+    .map(
+      (chunk, index) =>
+        [
+          `Chunk ${index}`,
+          `document_id: ${chunk.documentId}`,
+          `chunk_index: ${chunk.chunkIndex}`,
+          `similarity: ${chunk.similarity}`,
+          "content:",
+          chunk.content,
+        ].join("\n"),
+    )
+    .join("\n\n");
+}
+
+export async function generateAnswerFromChunks(
+  question: string,
+  chunks: RetrievedChunk[],
+) {
+  const trimmedQuestion = question.trim();
+
+  if (!trimmedQuestion) {
+    throw new Error("Cannot generate RAG answer for empty question.");
+  }
+
+  if (chunks.length === 0) {
+    return MATERIAL_DOES_NOT_MENTION_IT_MESSAGE;
+  }
+
+  const apiKey = process.env.OPENAI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY is not configured.");
+  }
+
+  const model = process.env.OPENAI_MODEL || DEFAULT_ANSWER_MODEL;
+  const client = createOpenAiClient(apiKey);
+  let completion: OpenAI.Chat.Completions.ChatCompletion;
+
+  try {
+    completion = await client.chat.completions.create({
+      model,
+      messages: [
+        {
+          role: "system",
+          content: [
+            "Answer study questions using only the provided document chunks.",
+            `If the chunks do not contain the answer, reply with exactly: "${MATERIAL_DOES_NOT_MENTION_IT_MESSAGE}"`,
+          ].join(" "),
+        },
+        {
+          role: "user",
+          content: [
+            `Question: ${trimmedQuestion}`,
+            "",
+            "Relevant document chunks:",
+            formatChunksForPrompt(chunks),
+          ].join("\n"),
+        },
+      ],
+    });
+  } catch (error) {
+    throw new Error(`OpenAI answer request failed: ${getErrorMessage(error)}`);
+  }
+
+  const answer = completion.choices[0]?.message?.content?.trim() ?? "";
+
+  if (!answer) {
+    throw new Error("OpenAI answer response did not include answer text.");
+  }
+
+  return answer;
+}
+
+export function createRagAnswerGenerator(dependencies: RagAnswerDependencies) {
+  return async function answerQuestion(
+    question: string,
+    options: RagAnswerOptions = {},
+  ): Promise<RagAnswerResult> {
+    const trimmedQuestion = question.trim();
+
+    if (!trimmedQuestion) {
+      throw new Error("Question is required.");
+    }
+
+    const chunks = await dependencies.retrieveRelevantChunks(
+      trimmedQuestion,
+      options.documentId,
+      options.topK,
+    );
+
+    if (chunks.length === 0) {
+      return {
+        answer: MATERIAL_DOES_NOT_MENTION_IT_MESSAGE,
+        chunks: [],
+      };
+    }
+
+    const answer = await (
+      dependencies.generateAnswerFromChunks ?? generateAnswerFromChunks
+    )(trimmedQuestion, chunks);
+
+    return {
+      answer,
+      chunks,
+    };
+  };
+}
+
+export const answerQuestion = createRagAnswerGenerator({
+  retrieveRelevantChunks,
+});
+
+export type { RagAnswerOptions, RagAnswerResult };

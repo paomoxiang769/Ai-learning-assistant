@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { AskDocumentForm } from "./ask-document-form";
 
 type DocumentDetailPageProps = {
   params: Promise<{
@@ -82,6 +83,8 @@ export default async function DocumentDetailPage({
   const rawTextLength = userDocument.raw_text?.length ?? 0;
   const rawTextPreview = getRawTextPreview(userDocument.raw_text);
   const summaryText = getSummaryText(userDocument.summary);
+  const canAskDocument =
+    userDocument.processing_status === "completed" && rawTextLength > 0;
 
   return (
     <main className="page">
@@ -142,6 +145,8 @@ export default async function DocumentDetailPage({
           <p className="raw-text-preview">{rawTextPreview}</p>
         </article>
       </section>
+
+      <AskDocumentForm documentId={userDocument.id} canAsk={canAskDocument} />
 
       <div className="button-row">
         <Link className="button secondary" href="/documents">

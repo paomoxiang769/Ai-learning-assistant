@@ -167,6 +167,15 @@ button.button {
   padding: 1.25rem;
 }
 
+.ask-document-form {
+  display: grid;
+  gap: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 1.25rem;
+}
+
 .form-field {
   display: grid;
   gap: 0.4rem;
@@ -181,6 +190,17 @@ button.button {
   color: var(--foreground);
   font: inherit;
   padding: 0 0.85rem;
+}
+
+.form-field textarea {
+  min-height: 7rem;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--foreground);
+  font: inherit;
+  padding: 0.85rem;
+  background: var(--surface);
 }
 
 .form-field input[type="file"] {
@@ -238,6 +258,24 @@ button.button {
 .list {
   display: grid;
   gap: 0.75rem;
+}
+
+.source-card {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.source-meta {
+  font-size: 0.95rem;
+}
+
+.source-keywords {
+  color: var(--foreground);
+  font-size: 0.95rem;
+}
+
+.source-excerpt {
+  color: var(--muted);
 }
 
 .list-item {
