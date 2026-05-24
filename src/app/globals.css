@@ -260,6 +260,29 @@ button.button {
   gap: 0.75rem;
 }
 
+.chat-thread {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.chat-message {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.chat-message-user {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.chat-message-assistant {
+  gap: 1rem;
+}
+
+.source-list {
+  margin-top: 0.25rem;
+}
+
 .source-card {
   display: grid;
   gap: 0.35rem;

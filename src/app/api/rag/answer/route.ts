@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server.js";
 import {
   answerQuestion,
+  type RagChatMessage,
   type RagAnswerOptions,
   type RagAnswerResult,
 } from "../../../../lib/rag-answer.ts";
@@ -39,6 +40,38 @@ function getTopK(value: unknown) {
   return value;
 }
 
+function getHistory(value: unknown): RagChatMessage[] | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  if (!Array.isArray(value)) {
+    throw new Error("history must be an array when provided.");
+  }
+
+  return value.map((message) => {
+    if (!message || typeof message !== "object") {
+      throw new Error("history items must be objects.");
+    }
+
+    const candidate = message as Record<string, unknown>;
+
+    if (
+      (candidate.role !== "user" && candidate.role !== "assistant") ||
+      typeof candidate.content !== "string"
+    ) {
+      throw new Error(
+        "history items must include role=user|assistant and string content.",
+      );
+    }
+
+    return {
+      role: candidate.role,
+      content: candidate.content,
+    };
+  });
+}
+
 export function createRagAnswerRoute(dependencies: RagAnswerRouteDependencies) {
   return async function POST(request: Request) {
     const supabase = await dependencies.createClient();
@@ -71,13 +104,15 @@ export function createRagAnswerRoute(dependencies: RagAnswerRouteDependencies) {
         : undefined;
 
     let topK: number | undefined;
+    let history: RagChatMessage[] | undefined;
 
     try {
       topK = getTopK(body.topK);
+      history = getHistory(body.history);
     } catch (error) {
       return NextResponse.json(
         {
-          error: error instanceof Error ? error.message : "Invalid topK value.",
+          error: error instanceof Error ? error.message : "Invalid request value.",
         },
         { status: 400 },
       );
@@ -87,6 +122,7 @@ export function createRagAnswerRoute(dependencies: RagAnswerRouteDependencies) {
       const result = await dependencies.answerQuestion(question, {
         documentId,
         topK,
+        history,
       });
 
       return NextResponse.json(result);

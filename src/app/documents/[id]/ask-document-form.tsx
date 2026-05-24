@@ -13,13 +13,23 @@ type AskDocumentFormProps = {
   canAsk: boolean;
 };
 
+type ChatMessage = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  sources: RagAnswerSource[];
+};
+
+function createMessageId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export function AskDocumentForm({
   documentId,
   canAsk,
 }: AskDocumentFormProps) {
   const [question, setQuestion] = useState("");
-  const [answer, setAnswer] = useState("");
-  const [sources, setSources] = useState<RagAnswerSource[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -33,7 +43,20 @@ export function AskDocumentForm({
       return;
     }
 
+    const history = messages.map((message) => ({
+      role: message.role,
+      content: message.content,
+    }));
+    const userMessage: ChatMessage = {
+      id: createMessageId(),
+      role: "user",
+      content: trimmedQuestion,
+      sources: [],
+    };
+
     setError("");
+    setQuestion("");
+    setMessages((currentMessages) => [...currentMessages, userMessage]);
     setIsSubmitting(true);
 
     try {
@@ -45,6 +68,7 @@ export function AskDocumentForm({
         body: JSON.stringify({
           question: trimmedQuestion,
           documentId,
+          history,
         }),
       });
 
@@ -60,11 +84,17 @@ export function AskDocumentForm({
       }
 
       const result = normalizeRagAnswerPayload(payload);
-      setAnswer(result.answer);
-      setSources(result.chunks);
+
+      setMessages((currentMessages) => [
+        ...currentMessages,
+        {
+          id: createMessageId(),
+          role: "assistant",
+          content: result.answer,
+          sources: result.chunks,
+        },
+      ]);
     } catch (requestError) {
-      setAnswer("");
-      setSources([]);
       setError(
         requestError instanceof Error
           ? requestError.message
@@ -113,45 +143,53 @@ export function AskDocumentForm({
         </div>
       </form>
 
-      {answer ? (
-        <article className="card">
-          <h3>Answer</h3>
-          <p className="raw-text-preview">{answer}</p>
-        </article>
-      ) : null}
+      {messages.length > 0 ? (
+        <div className="chat-thread" aria-label="Document chat history">
+          {messages.map((message) => (
+            <article
+              className={`card chat-message ${message.role === "user" ? "chat-message-user" : "chat-message-assistant"}`}
+              key={message.id}
+            >
+              <h3>{message.role === "user" ? "You" : "AI answer"}</h3>
+              <p className="raw-text-preview">{message.content}</p>
 
-      {sources.length > 0 ? (
-        <div className="list" aria-label="Answer sources">
-          {sources.map((source) => {
-            const previewAnalysis = analyzeSourcePreview(source.content);
+              {message.role === "assistant" && message.sources.length > 0 ? (
+                <div className="list source-list" aria-label="Answer sources">
+                  {message.sources.map((source) => {
+                    const previewAnalysis = analyzeSourcePreview(source.content);
 
-            return (
-              <article className="card source-card" key={source.id}>
-                <h3>Chunk {source.chunkIndex}</h3>
-                <p className="source-meta">
-                  Similarity: {formatSourceSimilarity(source.similarity)}
-                </p>
-                {previewAnalysis.kind === "low_quality_preview" &&
-                previewAnalysis.kind === "low_quality_preview" ? (
-                  <>
-                    <p className="form-message warning">{previewAnalysis.preview}</p>
-                    {previewAnalysis.keywords.length > 0 ? (
-                      <p className="source-keywords">
-                        Keywords: {previewAnalysis.keywords.join(", ")}
-                      </p>
-                    ) : null}
-                    {previewAnalysis.excerpt ? (
-                      <p className="raw-text-preview source-excerpt">
-                        Excerpt: {previewAnalysis.excerpt}
-                      </p>
-                    ) : null}
-                  </>
-                ) : (
-                  <p className="raw-text-preview">{previewAnalysis.preview}</p>
-                )}
-              </article>
-            );
-          })}
+                    return (
+                      <article className="card source-card" key={source.id}>
+                        <h3>Chunk {source.chunkIndex}</h3>
+                        <p className="source-meta">
+                          Similarity: {formatSourceSimilarity(source.similarity)}
+                        </p>
+                        {previewAnalysis.kind === "low_quality_preview" ? (
+                          <>
+                            <p className="form-message warning">
+                              {previewAnalysis.preview}
+                            </p>
+                            {previewAnalysis.keywords.length > 0 ? (
+                              <p className="source-keywords">
+                                Keywords: {previewAnalysis.keywords.join(", ")}
+                              </p>
+                            ) : null}
+                            {previewAnalysis.excerpt ? (
+                              <p className="raw-text-preview source-excerpt">
+                                Excerpt: {previewAnalysis.excerpt}
+                              </p>
+                            ) : null}
+                          </>
+                        ) : (
+                          <p className="raw-text-preview">{previewAnalysis.preview}</p>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </article>
+          ))}
         </div>
       ) : null}
     </section>

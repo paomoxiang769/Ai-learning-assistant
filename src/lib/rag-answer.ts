@@ -11,6 +11,11 @@ type FetchInitWithDispatcher = RequestInit & {
   dispatcher?: ProxyAgent;
 };
 
+type RagChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
 type RagAnswerResult = {
   answer: string;
   chunks: RetrievedChunk[];
@@ -19,6 +24,7 @@ type RagAnswerResult = {
 type RagAnswerOptions = {
   documentId?: string;
   topK?: number;
+  history?: RagChatMessage[];
 };
 
 type RagAnswerDependencies = {
@@ -30,6 +36,7 @@ type RagAnswerDependencies = {
   generateAnswerFromChunks?(
     question: string,
     chunks: RetrievedChunk[],
+    history?: RagChatMessage[],
   ): Promise<string>;
 };
 
@@ -59,7 +66,7 @@ function createOpenAiClient(apiKey: string) {
   return new OpenAI({
     apiKey,
     baseURL: process.env.OPENAI_BASE_URL,
-    fetch: proxyUrl ? createProxyFetch(proxyUrl) : undefined,
+    fetch: proxyUrl ? createProxyFetch(proxyUrl) : globalThis.fetch.bind(globalThis),
   });
 }
 
@@ -79,9 +86,23 @@ function formatChunksForPrompt(chunks: RetrievedChunk[]) {
     .join("\n\n");
 }
 
+function normalizeHistory(history: RagChatMessage[] | undefined) {
+  return (history ?? [])
+    .filter(
+      (message) =>
+        (message.role === "user" || message.role === "assistant") &&
+        message.content.trim(),
+    )
+    .map((message) => ({
+      role: message.role,
+      content: message.content.trim(),
+    }));
+}
+
 export async function generateAnswerFromChunks(
   question: string,
   chunks: RetrievedChunk[],
+  history: RagChatMessage[] = [],
 ) {
   const trimmedQuestion = question.trim();
 
@@ -111,13 +132,17 @@ export async function generateAnswerFromChunks(
           role: "system",
           content: [
             "Answer study questions using only the provided document chunks.",
-            `If the chunks do not contain the answer, reply with exactly: "${MATERIAL_DOES_NOT_MENTION_IT_MESSAGE}"`,
+            "Conversation history can be used to resolve references such as it, that, they, this topic, or follow-up comparison questions.",
+            "When the current question depends on the previous topic, combine the history with the current retrieved chunks to produce a grounded answer or comparison.",
+            "If the current chunks mention a related concept and the history identifies what is being compared, compare the current chunks with the prior topic from history instead of falling back immediately.",
+            `Reply with exactly: "${MATERIAL_DOES_NOT_MENTION_IT_MESSAGE}" only when the history and chunks together cannot support the answer.`,
           ].join(" "),
         },
+        ...normalizeHistory(history),
         {
           role: "user",
           content: [
-            `Question: ${trimmedQuestion}`,
+            `Current question: ${trimmedQuestion}`,
             "",
             "Relevant document chunks:",
             formatChunksForPrompt(chunks),
@@ -164,7 +189,7 @@ export function createRagAnswerGenerator(dependencies: RagAnswerDependencies) {
 
     const answer = await (
       dependencies.generateAnswerFromChunks ?? generateAnswerFromChunks
-    )(trimmedQuestion, chunks);
+    )(trimmedQuestion, chunks, options.history);
 
     return {
       answer,
@@ -177,4 +202,4 @@ export const answerQuestion = createRagAnswerGenerator({
   retrieveRelevantChunks,
 });
 
-export type { RagAnswerOptions, RagAnswerResult };
+export type { RagAnswerOptions, RagAnswerResult, RagChatMessage };

@@ -51,7 +51,7 @@ test.afterEach(() => {
   restoreEnvironment();
 });
 
-test("answerQuestion retrieves chunks and sends grounded context to the configured OpenAI-compatible API", async () => {
+test("answerQuestion retrieves chunks and sends grounded context plus history to the configured OpenAI-compatible API", async () => {
   process.env.OPENAI_API_KEY = "test-api-key";
   process.env.OPENAI_BASE_URL = "https://compatible.example/v1";
   process.env.OPENAI_MODEL = "test-answer-model";
@@ -67,7 +67,17 @@ test("answerQuestion retrieves chunks and sends grounded context to the configur
     assert.equal(init?.method, "POST");
     assert.equal(body.model, "test-answer-model");
     assert.match(body.messages[0].content, /only the provided document chunks/i);
-    assert.match(body.messages.at(-1).content, /What is kinetic energy\?/);
+    assert.match(body.messages[0].content, /history can be used to resolve references/i);
+    assert.match(body.messages[0].content, /compare the current chunks with the prior topic/i);
+    assert.match(
+      body.messages[0].content,
+      /reply with exactly: "The material does not mention it." only when the history and chunks together cannot support the answer/i,
+    );
+    assert.equal(body.messages[1].role, "user");
+    assert.equal(body.messages[1].content, "Earlier question");
+    assert.equal(body.messages[2].role, "assistant");
+    assert.equal(body.messages[2].content, "Earlier answer");
+    assert.match(body.messages.at(-1).content, /Current question: What is kinetic energy\?/);
     assert.match(body.messages.at(-1).content, /Chunk 0/);
     assert.match(body.messages.at(-1).content, /Kinetic energy is the energy of motion/);
     assert.match(body.messages.at(-1).content, /Chunk 1/);
@@ -118,10 +128,83 @@ test("answerQuestion retrieves chunks and sends grounded context to the configur
   const result = await answerQuestion("What is kinetic energy?", {
     documentId: "document-1",
     topK: 2,
+    history: [
+      { role: "user", content: "Earlier question" },
+      { role: "assistant", content: "Earlier answer" },
+    ],
   });
 
   assert.equal(result.answer, "Kinetic energy is the energy of motion.");
   assert.equal(result.chunks.length, 2);
+});
+
+test("answerQuestion prompt supports follow-up comparison questions grounded by history plus current chunks", async () => {
+  process.env.OPENAI_API_KEY = "test-api-key";
+  process.env.OPENAI_BASE_URL = "https://compatible.example/v1";
+  process.env.OPENAI_MODEL = "test-answer-model";
+  delete process.env.HTTPS_PROXY;
+  delete process.env.HTTP_PROXY;
+
+  globalThis.fetch = async (_url, init) => {
+    const body = JSON.parse(String(init?.body));
+
+    assert.equal(body.messages[1].role, "user");
+    assert.equal(body.messages[1].content, "What is KMP algorithm?");
+    assert.equal(body.messages[2].role, "assistant");
+    assert.equal(body.messages[2].content, "KMP matches patterns by reusing prefix information.");
+    assert.match(body.messages.at(-1).content, /How is it different from Rabin-Karp\?/);
+    assert.match(body.messages.at(-1).content, /Rabin-Karp uses hashing/);
+
+    return new Response(
+      JSON.stringify({
+        id: "chatcmpl-test",
+        object: "chat.completion",
+        created: 0,
+        model: "test-answer-model",
+        choices: [
+          {
+            index: 0,
+            finish_reason: "stop",
+            message: {
+              role: "assistant",
+              content:
+                "KMP reuses prefix information, while Rabin-Karp uses hashing to compare candidate matches.",
+            },
+          },
+        ],
+      }),
+      {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      },
+    );
+  };
+
+  const answerQuestion = createRagAnswerGenerator({
+    retrieveRelevantChunks: async () => [
+      {
+        id: "chunk-rk",
+        documentId: "document-1",
+        chunkIndex: 4,
+        content: "Rabin-Karp uses hashing to compare candidate substring matches.",
+        similarity: 0.9,
+      },
+    ],
+  });
+
+  const result = await answerQuestion("How is it different from Rabin-Karp?", {
+    documentId: "document-1",
+    history: [
+      { role: "user", content: "What is KMP algorithm?" },
+      {
+        role: "assistant",
+        content: "KMP matches patterns by reusing prefix information.",
+      },
+    ],
+  });
+
+  assert.match(result.answer, /Rabin-Karp uses hashing/i);
+  assert.equal(result.chunks.length, 1);
 });
 
 test("answerQuestion returns the fallback message when no relevant chunks are found", async () => {
@@ -142,7 +225,7 @@ test("answerQuestion returns the fallback message when no relevant chunks are fo
   assert.equal(fetchCalled, false);
 });
 
-test("RAG answer route validates the request body and forwards the question to the answer pipeline", async () => {
+test("RAG answer route validates the request body and forwards question plus history to the answer pipeline", async () => {
   let capturedCall = null;
   const handler = createRagAnswerRoute({
     createClient: async () => ({
@@ -183,6 +266,10 @@ test("RAG answer route validates the request body and forwards the question to t
       question: "Explain the concept",
       documentId: "document-9",
       topK: 3,
+      history: [
+        { role: "user", content: "First turn" },
+        { role: "assistant", content: "First answer" },
+      ],
     }),
   });
 
@@ -194,6 +281,10 @@ test("RAG answer route validates the request body and forwards the question to t
     options: {
       documentId: "document-9",
       topK: 3,
+      history: [
+        { role: "user", content: "First turn" },
+        { role: "assistant", content: "First answer" },
+      ],
     },
   });
   assert.deepEqual(await response.json(), {
