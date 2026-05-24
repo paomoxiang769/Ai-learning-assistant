@@ -4,7 +4,7 @@ import {
   createRagAnswerGenerator,
   MATERIAL_DOES_NOT_MENTION_IT_MESSAGE,
 } from "../src/lib/rag-answer.ts";
-import { createRagAnswerRoute } from "../src/app/api/rag/answer/route.ts";
+import { createRagAnswerRoute } from "../src/lib/rag-answer-route.ts";
 
 const originalFetch = globalThis.fetch;
 const originalOpenAiApiKey = process.env.OPENAI_API_KEY;
@@ -225,8 +225,9 @@ test("answerQuestion returns the fallback message when no relevant chunks are fo
   assert.equal(fetchCalled, false);
 });
 
-test("RAG answer route validates the request body and forwards question plus history to the answer pipeline", async () => {
+test("RAG answer route loads persisted history and saves both user and assistant messages", async () => {
   let capturedCall = null;
+  const operations = [];
   const handler = createRagAnswerRoute({
     createClient: async () => ({
       auth: {
@@ -237,6 +238,77 @@ test("RAG answer route validates the request body and forwards question plus his
             },
           };
         },
+      },
+      from(table) {
+        if (table === "documents") {
+          return {
+            select(columns) {
+              operations.push(["documents.select", columns]);
+              return this;
+            },
+            eq(column, value) {
+              operations.push(["documents.eq", column, value]);
+              return this;
+            },
+            maybeSingle() {
+              return {
+                data: { id: "document-9" },
+                error: null,
+              };
+            },
+          };
+        }
+
+        if (table === "document_chat_messages") {
+          return {
+            select(columns) {
+              operations.push(["messages.select", columns]);
+              return this;
+            },
+            eq(column, value) {
+              operations.push(["messages.eq", column, value]);
+              return this;
+            },
+            order(column, options) {
+              operations.push(["messages.order", column, options]);
+              return this;
+            },
+            insert(payload) {
+              operations.push(["messages.insert", payload]);
+
+              return {
+                error: null,
+              };
+            },
+            data: [
+              {
+                id: "message-1",
+                role: "user",
+                content: "First turn",
+                sources: null,
+                created_at: "2026-05-24T08:00:00.000Z",
+              },
+              {
+                id: "message-2",
+                role: "assistant",
+                content: "First answer",
+                sources: [
+                  {
+                    id: "chunk-1",
+                    documentId: "document-9",
+                    chunkIndex: 0,
+                    content: "Grounding chunk content.",
+                    similarity: 0.88,
+                  },
+                ],
+                created_at: "2026-05-24T08:00:01.000Z",
+              },
+            ],
+            error: null,
+          };
+        }
+
+        throw new Error(`Unexpected table: ${table}`);
       },
     }),
     answerQuestion: async (question, options) => {
@@ -266,10 +338,6 @@ test("RAG answer route validates the request body and forwards question plus his
       question: "Explain the concept",
       documentId: "document-9",
       topK: 3,
-      history: [
-        { role: "user", content: "First turn" },
-        { role: "assistant", content: "First answer" },
-      ],
     }),
   });
 
@@ -287,6 +355,44 @@ test("RAG answer route validates the request body and forwards question plus his
       ],
     },
   });
+  assert.deepEqual(operations, [
+    ["documents.select", "id"],
+    ["documents.eq", "id", "document-9"],
+    ["documents.eq", "user_id", "user-1"],
+    ["messages.select", "id, role, content, sources, created_at"],
+    ["messages.eq", "document_id", "document-9"],
+    ["messages.eq", "user_id", "user-1"],
+    ["messages.order", "created_at", { ascending: true }],
+    ["messages.order", "id", { ascending: true }],
+    [
+      "messages.insert",
+      {
+        document_id: "document-9",
+        user_id: "user-1",
+        role: "user",
+        content: "Explain the concept",
+        sources: null,
+      },
+    ],
+    [
+      "messages.insert",
+      {
+        document_id: "document-9",
+        user_id: "user-1",
+        role: "assistant",
+        content: "Grounded answer.",
+        sources: [
+          {
+            id: "chunk-5",
+            documentId: "document-9",
+            chunkIndex: 5,
+            content: "Grounding chunk content.",
+            similarity: 0.88,
+          },
+        ],
+      },
+    ],
+  ]);
   assert.deepEqual(await response.json(), {
     answer: "Grounded answer.",
     chunks: [
@@ -298,5 +404,44 @@ test("RAG answer route validates the request body and forwards question plus his
         similarity: 0.88,
       },
     ],
+  });
+});
+
+test("RAG answer route requires a document id for per-document chat persistence", async () => {
+  const handler = createRagAnswerRoute({
+    createClient: async () => ({
+      auth: {
+        async getUser() {
+          return {
+            data: {
+              user: { id: "user-1" },
+            },
+          };
+        },
+      },
+      from() {
+        throw new Error("from() should not be called");
+      },
+    }),
+    answerQuestion: async () => {
+      throw new Error("answerQuestion should not be called");
+    },
+  });
+
+  const response = await handler(
+    new Request("http://localhost/api/rag/answer", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        question: "Explain the concept",
+      }),
+    }),
+  );
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), {
+    error: "documentId is required.",
   });
 });

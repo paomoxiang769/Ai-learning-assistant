@@ -21,6 +21,8 @@ type SupabaseRpcResult = {
   } | null;
 };
 
+type Awaitable<T> = PromiseLike<T> | T;
+
 type RetrievalClient = {
   rpc(
     fnName: "match_document_chunks",
@@ -29,7 +31,7 @@ type RetrievalClient = {
       match_count: number;
       filter_document_id: string | null;
     },
-  ): Promise<SupabaseRpcResult>;
+  ): Awaitable<SupabaseRpcResult>;
 };
 
 type RetrievalDependencies = {

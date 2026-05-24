@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { normalizeDocumentChatMessages } from "@/lib/document-chat";
 import { createClient } from "@/lib/supabase/server";
 import { AskDocumentForm } from "./ask-document-form";
 
@@ -22,6 +23,14 @@ type DocumentRow = {
   raw_text: string | null;
   summary: string | null;
   processing_status: "pending" | "completed" | "failed";
+};
+
+type DocumentChatMessageRow = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  sources: unknown;
+  created_at: string;
 };
 
 function formatUploadDate(value: string) {
@@ -80,6 +89,21 @@ export default async function DocumentDetailPage({
   }
 
   const userDocument = document as DocumentRow;
+  const { data: chatMessages, error: chatMessagesError } = await supabase
+    .from("document_chat_messages")
+    .select("id, role, content, sources, created_at")
+    .eq("document_id", userDocument.id)
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
+
+  if (chatMessagesError) {
+    throw new Error("Unable to load chat history.");
+  }
+
+  const initialMessages = normalizeDocumentChatMessages(
+    (chatMessages ?? []) as DocumentChatMessageRow[],
+  );
   const rawTextLength = userDocument.raw_text?.length ?? 0;
   const rawTextPreview = getRawTextPreview(userDocument.raw_text);
   const summaryText = getSummaryText(userDocument.summary);
@@ -146,7 +170,11 @@ export default async function DocumentDetailPage({
         </article>
       </section>
 
-      <AskDocumentForm documentId={userDocument.id} canAsk={canAskDocument} />
+      <AskDocumentForm
+        documentId={userDocument.id}
+        canAsk={canAskDocument}
+        initialMessages={initialMessages}
+      />
 
       <div className="button-row">
         <Link className="button secondary" href="/documents">

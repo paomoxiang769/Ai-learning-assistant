@@ -1,23 +1,17 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import type { DocumentChatMessage } from "@/lib/document-chat";
 import {
   analyzeSourcePreview,
   formatSourceSimilarity,
   normalizeRagAnswerPayload,
-  type RagAnswerSource,
 } from "@/lib/rag-answer-client";
 
 type AskDocumentFormProps = {
   documentId: string;
   canAsk: boolean;
-};
-
-type ChatMessage = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  sources: RagAnswerSource[];
+  initialMessages: DocumentChatMessage[];
 };
 
 function createMessageId() {
@@ -27,9 +21,10 @@ function createMessageId() {
 export function AskDocumentForm({
   documentId,
   canAsk,
+  initialMessages,
 }: AskDocumentFormProps) {
   const [question, setQuestion] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<DocumentChatMessage[]>(initialMessages);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -43,11 +38,7 @@ export function AskDocumentForm({
       return;
     }
 
-    const history = messages.map((message) => ({
-      role: message.role,
-      content: message.content,
-    }));
-    const userMessage: ChatMessage = {
+    const userMessage: DocumentChatMessage = {
       id: createMessageId(),
       role: "user",
       content: trimmedQuestion,
@@ -68,7 +59,6 @@ export function AskDocumentForm({
         body: JSON.stringify({
           question: trimmedQuestion,
           documentId,
-          history,
         }),
       });
 
