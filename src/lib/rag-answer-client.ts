@@ -1,6 +1,7 @@
 type RagAnswerSource = {
   id: string;
   documentId: string;
+  documentTitle?: string;
   chunkIndex: number;
   content: string;
   similarity: number;
@@ -55,6 +56,8 @@ function isValidSource(source: unknown): source is RagAnswerSource {
   return (
     typeof candidate.id === "string" &&
     typeof candidate.documentId === "string" &&
+    (candidate.documentTitle === undefined ||
+      typeof candidate.documentTitle === "string") &&
     typeof candidate.chunkIndex === "number" &&
     typeof candidate.content === "string" &&
     typeof candidate.similarity === "number"

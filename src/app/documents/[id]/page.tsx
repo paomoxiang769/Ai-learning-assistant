@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { normalizeDocumentChatMessages } from "@/lib/document-chat";
+import { formatRawTextPreview } from "@/lib/raw-text-preview";
 import { createClient } from "@/lib/supabase/server";
 import { AskDocumentForm } from "./ask-document-form";
 
@@ -41,11 +42,7 @@ function formatUploadDate(value: string) {
 }
 
 function getRawTextPreview(rawText: string | null) {
-  if (!rawText) {
-    return "No parsed text is available yet.";
-  }
-
-  return rawText.slice(0, 500);
+  return formatRawTextPreview(rawText, 500);
 }
 
 function getSummaryText(summary: string | null) {

@@ -6,9 +6,15 @@ type RetrievedChunkRow = {
   similarity: number;
 };
 
+type KnowledgeBaseDocumentRow = {
+  id: string;
+  file_name: string;
+};
+
 type RetrievedChunk = {
   id: string;
   documentId: string;
+  documentTitle?: string;
   chunkIndex: number;
   content: string;
   similarity: number;
@@ -23,7 +29,28 @@ type SupabaseRpcResult = {
 
 type Awaitable<T> = PromiseLike<T> | T;
 
+type RetrievalAuthResult = {
+  data: {
+    user: {
+      id: string;
+    } | null;
+  };
+};
+
+type KnowledgeBaseDocumentQueryResult = {
+  data: KnowledgeBaseDocumentRow[] | null;
+  error: {
+    message: string;
+  } | null;
+};
+
 type RetrievalClient = {
+  auth: {
+    getUser(): Awaitable<RetrievalAuthResult>;
+  };
+  from(table: "documents"): {
+    select(columns: "id, file_name"): any;
+  };
   rpc(
     fnName: "match_document_chunks",
     params: {
@@ -59,6 +86,22 @@ function mapRetrievedChunk(row: RetrievedChunkRow): RetrievedChunk {
   };
 }
 
+function attachDocumentTitle(
+  chunk: RetrievedChunk,
+  documentsById: Map<string, string>,
+) {
+  const documentTitle = documentsById.get(chunk.documentId);
+
+  if (!documentTitle) {
+    return chunk;
+  }
+
+  return {
+    ...chunk,
+    documentTitle,
+  };
+}
+
 export function createChunkRetriever(dependencies: RetrievalDependencies) {
   return async function retrieveRelevantChunks(
     query: string,
@@ -67,10 +110,67 @@ export function createChunkRetriever(dependencies: RetrievalDependencies) {
   ): Promise<RetrievedChunk[]> {
     const queryEmbedding = await dependencies.generateEmbedding(query);
     const supabase = await dependencies.createClient();
+    const normalizedTopK = normalizeTopK(topK);
+
+    if (!documentId) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        return [];
+      }
+
+      const documentsQuery = (await supabase
+        .from("documents")
+        .select("id, file_name")
+        .eq("user_id", user.id)
+        .eq("processing_status", "completed")
+        .order("created_at", { ascending: false })) as KnowledgeBaseDocumentQueryResult;
+
+      if (documentsQuery.error) {
+        throw new Error(
+          `Knowledge base document lookup failed: ${documentsQuery.error.message}`,
+        );
+      }
+
+      const knowledgeBaseDocuments = documentsQuery.data ?? [];
+
+      if (knowledgeBaseDocuments.length === 0) {
+        return [];
+      }
+
+      const documentsById = new Map(
+        knowledgeBaseDocuments.map((document) => [document.id, document.file_name]),
+      );
+      const chunkResults = await Promise.all(
+        knowledgeBaseDocuments.map(async (document) => {
+          const { data, error } = await supabase.rpc("match_document_chunks", {
+            query_embedding: queryEmbedding,
+            match_count: normalizedTopK,
+            filter_document_id: document.id,
+          });
+
+          if (error) {
+            throw new Error(`Document chunk retrieval failed: ${error.message}`);
+          }
+
+          return (data ?? [])
+            .map(mapRetrievedChunk)
+            .map((chunk) => attachDocumentTitle(chunk, documentsById));
+        }),
+      );
+
+      return chunkResults
+        .flat()
+        .sort((leftChunk, rightChunk) => rightChunk.similarity - leftChunk.similarity)
+        .slice(0, normalizedTopK);
+    }
+
     const { data, error } = await supabase.rpc("match_document_chunks", {
       query_embedding: queryEmbedding,
-      match_count: normalizeTopK(topK),
-      filter_document_id: documentId ?? null,
+      match_count: normalizedTopK,
+      filter_document_id: documentId,
     });
 
     if (error) {

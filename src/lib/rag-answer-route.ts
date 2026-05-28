@@ -27,6 +27,36 @@ type RagAnswerRouteDependencies = {
   ): Promise<RagAnswerResult>;
 };
 
+function normalizeRequestHistory(value: unknown): RagAnswerOptions["history"] {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!Array.isArray(value)) {
+    throw new Error("history must be an array when provided.");
+  }
+
+  return value.map((message) => {
+    if (!message || typeof message !== "object") {
+      throw new Error("history messages must be objects.");
+    }
+
+    const candidate = message as Record<string, unknown>;
+
+    if (
+      (candidate.role !== "user" && candidate.role !== "assistant") ||
+      typeof candidate.content !== "string"
+    ) {
+      throw new Error("history messages must include role and content.");
+    }
+
+    return {
+      role: candidate.role,
+      content: candidate.content,
+    };
+  });
+}
+
 function getTopK(value: unknown) {
   if (value === undefined || value === null) {
     return undefined;
@@ -70,13 +100,6 @@ export function createRagAnswerRoute(dependencies: RagAnswerRouteDependencies) {
         ? body.documentId.trim()
         : undefined;
 
-    if (!documentId) {
-      return NextResponse.json(
-        { error: "documentId is required." },
-        { status: 400 },
-      );
-    }
-
     let topK: number | undefined;
 
     try {
@@ -88,6 +111,38 @@ export function createRagAnswerRoute(dependencies: RagAnswerRouteDependencies) {
         },
         { status: 400 },
       );
+    }
+
+    let requestHistory: RagAnswerOptions["history"];
+
+    try {
+      requestHistory = normalizeRequestHistory(body.history);
+    } catch (error) {
+      return NextResponse.json(
+        {
+          error: error instanceof Error ? error.message : "Invalid request value.",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (!documentId) {
+      try {
+        const result = await dependencies.answerQuestion(question, {
+          topK,
+          history: requestHistory,
+        });
+
+        return NextResponse.json(result);
+      } catch (error) {
+        return NextResponse.json(
+          {
+            error:
+              error instanceof Error ? error.message : "Unknown RAG answer error.",
+          },
+          { status: 500 },
+        );
+      }
     }
 
     try {

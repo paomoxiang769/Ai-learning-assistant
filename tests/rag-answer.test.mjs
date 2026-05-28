@@ -424,7 +424,10 @@ test("RAG answer route requires a document id for per-document chat persistence"
       },
     }),
     answerQuestion: async () => {
-      throw new Error("answerQuestion should not be called");
+      return {
+        answer: "Knowledge-base answer.",
+        chunks: [],
+      };
     },
   });
 
@@ -436,12 +439,104 @@ test("RAG answer route requires a document id for per-document chat persistence"
       },
       body: JSON.stringify({
         question: "Explain the concept",
+        history: [
+          { role: "user", content: "Earlier question" },
+          { role: "assistant", content: "Earlier answer" },
+        ],
       }),
     }),
   );
 
-  assert.equal(response.status, 400);
+  assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), {
-    error: "documentId is required.",
+    answer: "Knowledge-base answer.",
+    chunks: [],
+  });
+});
+
+test("RAG answer route skips persistence and forwards request history in knowledge-base mode", async () => {
+  let capturedCall = null;
+  const operations = [];
+  const handler = createRagAnswerRoute({
+    createClient: async () => ({
+      auth: {
+        async getUser() {
+          return {
+            data: {
+              user: { id: "user-1" },
+            },
+          };
+        },
+      },
+      from(table) {
+        operations.push(["from", table]);
+        throw new Error("from() should not be called in knowledge-base mode");
+      },
+    }),
+    answerQuestion: async (question, options) => {
+      capturedCall = { question, options };
+
+      return {
+        answer: "Knowledge-base answer.",
+        chunks: [
+          {
+            id: "chunk-kb-1",
+            documentId: "document-2",
+            documentTitle: "String Matching Slides",
+            chunkIndex: 3,
+            content: "Rabin-Karp uses hashing.",
+            similarity: 0.91,
+          },
+        ],
+      };
+    },
+  });
+
+  const response = await handler(
+    new Request("http://localhost/api/rag/answer", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        question: "Compare KMP and Rabin-Karp",
+        history: [
+          { role: "user", content: "What is KMP?" },
+          {
+            role: "assistant",
+            content: "KMP uses prefix information for efficient matching.",
+          },
+        ],
+      }),
+    }),
+  );
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(capturedCall, {
+    question: "Compare KMP and Rabin-Karp",
+    options: {
+      topK: undefined,
+      history: [
+        { role: "user", content: "What is KMP?" },
+        {
+          role: "assistant",
+          content: "KMP uses prefix information for efficient matching.",
+        },
+      ],
+    },
+  });
+  assert.deepEqual(operations, []);
+  assert.deepEqual(await response.json(), {
+    answer: "Knowledge-base answer.",
+    chunks: [
+      {
+        id: "chunk-kb-1",
+        documentId: "document-2",
+        documentTitle: "String Matching Slides",
+        chunkIndex: 3,
+        content: "Rabin-Karp uses hashing.",
+        similarity: 0.91,
+      },
+    ],
   });
 });

@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import type { DocumentChatMessage } from "@/lib/document-chat";
+import { ChatMarkdown } from "@/components/chat-markdown";
+import {
+  buildDocumentChatHistory,
+  type DocumentChatMessage,
+} from "@/lib/document-chat";
 import {
   getDocumentChatViewModel,
   getSourcesSummaryLabel,
@@ -11,25 +15,22 @@ import {
   formatSourceSimilarity,
   normalizeRagAnswerPayload,
 } from "@/lib/rag-answer-client";
-import { ChatMarkdown } from "@/components/chat-markdown";
 
-type AskDocumentFormProps = {
-  documentId: string;
+type KnowledgeBaseChatFormProps = {
   canAsk: boolean;
-  initialMessages: DocumentChatMessage[];
+  processedDocumentCount: number;
 };
 
 function createMessageId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export function AskDocumentForm({
-  documentId,
+export function KnowledgeBaseChatForm({
   canAsk,
-  initialMessages,
-}: AskDocumentFormProps) {
+  processedDocumentCount,
+}: KnowledgeBaseChatFormProps) {
   const [question, setQuestion] = useState("");
-  const [messages, setMessages] = useState<DocumentChatMessage[]>(initialMessages);
+  const [messages, setMessages] = useState<DocumentChatMessage[]>([]);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -43,6 +44,7 @@ export function AskDocumentForm({
       return;
     }
 
+    const requestHistory = buildDocumentChatHistory(messages);
     const userMessage: DocumentChatMessage = {
       id: createMessageId(),
       role: "user",
@@ -63,7 +65,7 @@ export function AskDocumentForm({
         },
         body: JSON.stringify({
           question: trimmedQuestion,
-          documentId,
+          history: requestHistory,
         }),
       });
 
@@ -107,21 +109,21 @@ export function AskDocumentForm({
   });
 
   return (
-    <section className="list-section parsed-text-section" aria-label="Ask this document">
+    <section className="list-section parsed-text-section" aria-label="Knowledge base chat">
       <div className="section-heading">
-        <h2>Ask this document</h2>
-        <p>Retrieve grounded answers from the stored chunks</p>
+        <h2>Knowledge base chat</h2>
+        <p>{processedDocumentCount} processed documents</p>
       </div>
 
       <form className="ask-document-form" onSubmit={handleSubmit}>
-        <label className="form-field" htmlFor="document-question">
+        <label className="form-field" htmlFor="knowledge-base-question">
           <span>Your question</span>
           <textarea
-            id="document-question"
+            id="knowledge-base-question"
             name="question"
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
-            placeholder="Ask about this study material"
+            placeholder="Compare KMP and Rabin-Karp from my materials"
             rows={4}
             disabled={viewModel.disableAsk}
             required
@@ -130,8 +132,7 @@ export function AskDocumentForm({
 
         {!canAsk ? (
           <p className="form-message warning">
-            This document is not ready for RAG answers yet. Wait until processing is
-            completed.
+            Upload and process at least one document before using knowledge base chat.
           </p>
         ) : null}
 
@@ -146,10 +147,10 @@ export function AskDocumentForm({
 
       {viewModel.showEmptyState ? (
         <article className="card chat-empty-state">
-          <p>Ask this document anything.</p>
+          <p>Ask across all your processed materials.</p>
         </article>
       ) : (
-        <div className="chat-thread" aria-label="Document chat history">
+        <div className="chat-thread" aria-label="Knowledge base chat history">
           {messages.map((message) => (
             <article
               className={`card chat-message ${message.role === "user" ? "chat-message-user" : "chat-message-assistant"}`}
@@ -177,7 +178,10 @@ export function AskDocumentForm({
 
                       return (
                         <article className="card source-card" key={source.id}>
-                          <h3>Chunk {source.chunkIndex}</h3>
+                          <h3 className="source-document-title">
+                            {source.documentTitle ?? source.documentId}
+                          </h3>
+                          <p className="source-meta">Chunk {source.chunkIndex}</p>
                           <p className="source-meta">
                             Similarity: {formatSourceSimilarity(source.similarity)}
                           </p>

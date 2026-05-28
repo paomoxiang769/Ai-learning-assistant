@@ -14,6 +14,7 @@ test("normalizeRagAnswerPayload keeps answer text and source metadata", () => {
       {
         id: "chunk-1",
         documentId: "document-1",
+        documentTitle: "Algorithms Notes",
         chunkIndex: 4,
         content: "Source text",
         similarity: 0.87654,
@@ -27,6 +28,7 @@ test("normalizeRagAnswerPayload keeps answer text and source metadata", () => {
       {
         id: "chunk-1",
         documentId: "document-1",
+        documentTitle: "Algorithms Notes",
         chunkIndex: 4,
         content: "Source text",
         similarity: 0.87654,

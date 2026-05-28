@@ -77,11 +77,14 @@ function formatChunksForPrompt(chunks: RetrievedChunk[]) {
         [
           `Chunk ${index}`,
           `document_id: ${chunk.documentId}`,
+          chunk.documentTitle ? `document_title: ${chunk.documentTitle}` : null,
           `chunk_index: ${chunk.chunkIndex}`,
           `similarity: ${chunk.similarity}`,
           "content:",
           chunk.content,
-        ].join("\n"),
+        ]
+          .filter(Boolean)
+          .join("\n"),
     )
     .join("\n\n");
 }
