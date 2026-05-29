@@ -144,6 +144,11 @@ button.button {
   font: inherit;
 }
 
+button.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 .auth-page {
   max-width: 720px;
 }
@@ -168,6 +173,15 @@ button.button {
 }
 
 .ask-document-form {
+  display: grid;
+  gap: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 1.25rem;
+}
+
+.study-quiz-form {
   display: grid;
   gap: 1rem;
   border: 1px solid var(--border);
@@ -460,6 +474,55 @@ button.button {
 
 .source-excerpt {
   color: var(--muted);
+}
+
+.quiz-question-card {
+  display: grid;
+  gap: 1rem;
+}
+
+.quiz-question-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.quiz-question-meta h3 {
+  margin: 0;
+}
+
+.quiz-question-type {
+  border-radius: 999px;
+  background: #eff6ff;
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.35rem 0.75rem;
+  text-transform: capitalize;
+}
+
+.quiz-options {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--foreground);
+}
+
+.quiz-options li {
+  line-height: 1.6;
+}
+
+.quiz-answer-panel {
+  display: grid;
+  gap: 0.45rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+
+.quiz-answer-panel p {
+  color: var(--foreground);
 }
 
 .list-item {

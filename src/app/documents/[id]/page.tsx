@@ -4,6 +4,7 @@ import { normalizeDocumentChatMessages } from "@/lib/document-chat";
 import { formatRawTextPreview } from "@/lib/raw-text-preview";
 import { createClient } from "@/lib/supabase/server";
 import { AskDocumentForm } from "./ask-document-form";
+import { StudyQuizPanel } from "./study-quiz-panel";
 
 type DocumentDetailPageProps = {
   params: Promise<{
@@ -172,6 +173,8 @@ export default async function DocumentDetailPage({
         canAsk={canAskDocument}
         initialMessages={initialMessages}
       />
+
+      <StudyQuizPanel documentId={userDocument.id} canGenerate={canAskDocument} />
 
       <div className="button-row">
         <Link className="button secondary" href="/documents">
