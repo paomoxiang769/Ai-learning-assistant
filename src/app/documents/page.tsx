@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { DeleteDocumentForm } from "./delete-document-form";
 import { UploadForm } from "./upload-form";
 
 type DocumentsPageProps = {
   searchParams: Promise<{
     error?: string;
     message?: string;
+    warning?: string;
   }>;
 };
 
@@ -64,7 +66,11 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
         <p>Upload PDF or TXT learning materials and keep them tied to your account.</p>
       </section>
 
-      <UploadForm error={params.error} message={params.message} />
+      <UploadForm
+        error={params.error}
+        message={params.message}
+        warning={params.warning}
+      />
 
       <section className="list-section" aria-label="Uploaded document list">
         <div className="section-heading">
@@ -94,9 +100,15 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
                     {formatUploadDate(document.created_at)}
                   </p>
                 </div>
-                <Link className="button secondary" href={`/documents/${document.id}`}>
-                  View
-                </Link>
+                <div className="list-item-actions">
+                  <Link className="button secondary" href={`/documents/${document.id}`}>
+                    View
+                  </Link>
+                  <DeleteDocumentForm
+                    documentId={document.id}
+                    fileName={document.file_name}
+                  />
+                </div>
               </article>
             ))}
           </div>

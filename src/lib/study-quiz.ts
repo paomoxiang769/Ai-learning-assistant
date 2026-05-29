@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { fetch as undiciFetch, ProxyAgent } from "undici";
 import {
-  normalizeStudyQuizPayload,
+  normalizeStoredStudyQuizPayload,
   type StudyQuizQuestion,
 } from "./study-quiz-types.ts";
 
@@ -14,6 +14,7 @@ type FetchInitWithDispatcher = RequestInit & {
 type GenerateStudyQuizOptions = {
   count: number;
   documentTitle?: string;
+  avoidQuestions?: string[];
 };
 
 function getErrorMessage(error: unknown) {
@@ -67,6 +68,12 @@ function stripJsonCodeFence(value: string) {
     .trim();
 }
 
+function normalizeAvoidQuestions(questions: string[] | undefined) {
+  return (questions ?? [])
+    .map((question) => question.trim())
+    .filter(Boolean);
+}
+
 export async function generateStudyQuiz(
   documentText: string,
   options: GenerateStudyQuizOptions,
@@ -78,6 +85,7 @@ export async function generateStudyQuiz(
   }
 
   const count = normalizeCount(options.count);
+  const avoidQuestions = normalizeAvoidQuestions(options.avoidQuestions);
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
@@ -96,9 +104,11 @@ export async function generateStudyQuiz(
           role: "system",
           content: [
             "Generate study quiz questions using only the provided study material.",
+            "Generate a fresh quiz every time, with questions that are meaningfully different from prior quizzes.",
             "Return valid JSON only.",
             "Do not include markdown fences or extra commentary.",
             "Use a mix of multiple choice and short answer questions when possible.",
+            "Vary question angles across concept understanding, comparison, application, short answer, and multiple choice.",
           ].join(" "),
         },
         {
@@ -112,10 +122,24 @@ export async function generateStudyQuiz(
             "]",
             options.documentTitle ? `Document title: ${options.documentTitle}` : null,
             "",
+            "Generate a fresh quiz with varied angles:",
+            "- concept understanding",
+            "- comparison",
+            "- application",
+            "- short answer",
+            "- multiple choice",
+            "",
             "Use exactly these type strings:",
             "- multiple choice",
             "- short answer",
             "",
+            avoidQuestions.length > 0
+              ? [
+                  "Avoid repeating these existing questions or making near-duplicates:",
+                  ...avoidQuestions.map((question) => `- ${question}`),
+                  "",
+                ].join("\n")
+              : null,
             "Study material:",
             trimmedDocumentText,
           ]
@@ -142,7 +166,7 @@ export async function generateStudyQuiz(
     throw new Error(`OpenAI quiz response was not valid JSON: ${getErrorMessage(error)}`);
   }
 
-  return normalizeStudyQuizPayload(parsedQuiz).slice(0, count);
+  return normalizeStoredStudyQuizPayload(parsedQuiz).slice(0, count);
 }
 
 export type { GenerateStudyQuizOptions };

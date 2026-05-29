@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  normalizeSavedStudyQuizListPayload,
   normalizeStudyQuizPayload,
+  type SavedStudyQuiz,
   type StudyQuizQuestion,
 } from "@/lib/study-quiz-types";
 
@@ -17,14 +19,124 @@ function getQuestionKey(question: StudyQuizQuestion, index: number) {
   return `${index}-${question.question}`;
 }
 
+function formatQuizCreatedAt(value: string) {
+  return new Intl.DateTimeFormat("en", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function normalizeGeneratedQuizPayload(value: unknown) {
+  if (Array.isArray(value)) {
+    return {
+      quiz: normalizeStudyQuizPayload(value),
+      quizId: null,
+    };
+  }
+
+  if (!value || typeof value !== "object") {
+    throw new Error("Quiz response must include generated quiz data.");
+  }
+
+  const candidate = value as Record<string, unknown>;
+
+  return {
+    quiz: normalizeStudyQuizPayload(candidate.quiz),
+    quizId: typeof candidate.quizId === "string" ? candidate.quizId : null,
+  };
+}
+
 export function StudyQuizPanel({
   documentId,
   canGenerate,
 }: StudyQuizPanelProps) {
   const [quiz, setQuiz] = useState<StudyQuizQuestion[]>([]);
+  const [loadedQuizId, setLoadedQuizId] = useState<string | null>(null);
+  const [savedQuizzes, setSavedQuizzes] = useState<SavedStudyQuiz[]>([]);
   const [revealedAnswers, setRevealedAnswers] = useState<string[]>([]);
   const [error, setError] = useState("");
+  const [historyError, setHistoryError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [deletingQuizId, setDeletingQuizId] = useState<string | null>(null);
+
+  async function loadQuizHistory() {
+    setHistoryError("");
+    setIsLoadingHistory(true);
+
+    try {
+      const response = await fetch(
+        `/api/study/quiz?documentId=${encodeURIComponent(documentId)}`,
+      );
+      const payload = await response.json();
+
+      if (!response.ok) {
+        const message =
+          payload && typeof payload.error === "string"
+            ? payload.error
+            : "Unable to load quiz history right now.";
+
+        throw new Error(message);
+      }
+
+      setSavedQuizzes(normalizeSavedStudyQuizListPayload(payload));
+    } catch (requestError) {
+      setHistoryError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to load quiz history right now.",
+      );
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadInitialQuizHistory() {
+      setHistoryError("");
+      setIsLoadingHistory(true);
+
+      try {
+        const response = await fetch(
+          `/api/study/quiz?documentId=${encodeURIComponent(documentId)}`,
+        );
+        const payload = await response.json();
+
+        if (!response.ok) {
+          const message =
+            payload && typeof payload.error === "string"
+              ? payload.error
+              : "Unable to load quiz history right now.";
+
+          throw new Error(message);
+        }
+
+        if (isMounted) {
+          setSavedQuizzes(normalizeSavedStudyQuizListPayload(payload));
+        }
+      } catch (requestError) {
+        if (isMounted) {
+          setHistoryError(
+            requestError instanceof Error
+              ? requestError.message
+              : "Unable to load quiz history right now.",
+          );
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingHistory(false);
+        }
+      }
+    }
+
+    loadInitialQuizHistory();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [documentId]);
 
   async function handleGenerateQuiz() {
     if (!canGenerate || isSubmitting) {
@@ -43,6 +155,7 @@ export function StudyQuizPanel({
         body: JSON.stringify({
           documentId,
           count: DEFAULT_QUIZ_COUNT,
+          save: true,
         }),
       });
 
@@ -57,8 +170,12 @@ export function StudyQuizPanel({
         throw new Error(message);
       }
 
-      setQuiz(normalizeStudyQuizPayload(payload));
+      const generatedQuiz = normalizeGeneratedQuizPayload(payload);
+
+      setQuiz(generatedQuiz.quiz);
+      setLoadedQuizId(generatedQuiz.quizId);
       setRevealedAnswers([]);
+      await loadQuizHistory();
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -78,6 +195,70 @@ export function StudyQuizPanel({
     );
   }
 
+  function loadSavedQuiz(savedQuiz: SavedStudyQuiz) {
+    setError("");
+
+    if (loadedQuizId === savedQuiz.id) {
+      setQuiz([]);
+      setLoadedQuizId(null);
+      setRevealedAnswers([]);
+      return;
+    }
+
+    setQuiz(savedQuiz.quiz);
+    setLoadedQuizId(savedQuiz.id);
+    setRevealedAnswers([]);
+  }
+
+  async function deleteSavedQuiz(savedQuiz: SavedStudyQuiz) {
+    if (!window.confirm("Delete this saved quiz?")) {
+      return;
+    }
+
+    setHistoryError("");
+    setDeletingQuizId(savedQuiz.id);
+
+    try {
+      const response = await fetch("/api/study/quiz", {
+        method: "DELETE",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          quizId: savedQuiz.id,
+        }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        const message =
+          payload && typeof payload.error === "string"
+            ? payload.error
+            : "Unable to delete quiz right now.";
+
+        throw new Error(message);
+      }
+
+      setSavedQuizzes((currentSavedQuizzes) =>
+        currentSavedQuizzes.filter((quizItem) => quizItem.id !== savedQuiz.id),
+      );
+
+      if (loadedQuizId === savedQuiz.id) {
+        setQuiz([]);
+        setLoadedQuizId(null);
+        setRevealedAnswers([]);
+      }
+    } catch (requestError) {
+      setHistoryError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to delete quiz right now.",
+      );
+    } finally {
+      setDeletingQuizId(null);
+    }
+  }
+
   return (
     <section className="list-section parsed-text-section" aria-label="Generate quiz">
       <div className="section-heading">
@@ -88,7 +269,7 @@ export function StudyQuizPanel({
       <article className="study-quiz-form">
         <p className="form-message">
           Generates a temporary quiz from the current document text. Questions are
-          not saved.
+          saved to quiz history for review.
         </p>
 
         {!canGenerate ? (
@@ -111,6 +292,53 @@ export function StudyQuizPanel({
           </button>
         </div>
       </article>
+
+      <div className="quiz-history" aria-label="Quiz history">
+        <div className="section-heading">
+          <h3>Quiz History</h3>
+          <p>{isLoadingHistory ? "Loading..." : `${savedQuizzes.length} saved`}</p>
+        </div>
+
+        {historyError ? <p className="form-message error">{historyError}</p> : null}
+
+        {savedQuizzes.length > 0 ? (
+          <div className="list">
+            {savedQuizzes.map((savedQuiz) => (
+              <article className="quiz-history-item" key={savedQuiz.id}>
+                <div>
+                  <h4>{savedQuiz.title ?? "Saved quiz"}</h4>
+                  <p>
+                    {formatQuizCreatedAt(savedQuiz.createdAt)} -{" "}
+                    {savedQuiz.questionCount} questions
+                  </p>
+                </div>
+
+                <div className="quiz-history-actions">
+                  <button
+                    className="button secondary"
+                    type="button"
+                    onClick={() => loadSavedQuiz(savedQuiz)}
+                  >
+                    {loadedQuizId === savedQuiz.id ? "Hide Quiz" : "Load Quiz"}
+                  </button>
+                  <button
+                    className="button secondary"
+                    type="button"
+                    onClick={() => deleteSavedQuiz(savedQuiz)}
+                    disabled={deletingQuizId === savedQuiz.id}
+                  >
+                    {deletingQuizId === savedQuiz.id ? "Deleting..." : "Delete"}
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : !isLoadingHistory && !historyError ? (
+          <article className="card chat-empty-state">
+            <p>No saved quizzes yet.</p>
+          </article>
+        ) : null}
+      </div>
 
       {quiz.length > 0 ? (
         <div className="list" aria-label="Generated quiz questions">

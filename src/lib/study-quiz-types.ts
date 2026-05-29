@@ -13,6 +13,15 @@ export type StudyQuizQuestion = {
   explanation: string;
 };
 
+export type SavedStudyQuiz = {
+  id: string;
+  documentId: string;
+  title: string | null;
+  quiz: StudyQuizQuestion[];
+  questionCount: number;
+  createdAt: string;
+};
+
 function normalizeQuestionType(value: unknown): StudyQuizQuestionType {
   if (typeof value !== "string") {
     throw new Error("Quiz question type must be a string.");
@@ -93,4 +102,72 @@ export function normalizeStudyQuizPayload(value: unknown): StudyQuizQuestion[] {
 
     return normalizedQuestion;
   });
+}
+
+export function normalizeStoredStudyQuizPayload(value: unknown): StudyQuizQuestion[] {
+  if (Array.isArray(value)) {
+    return normalizeStudyQuizPayload(value);
+  }
+
+  if (value && typeof value === "object") {
+    const candidate = value as Record<string, unknown>;
+
+    if (Array.isArray(candidate.quiz)) {
+      return normalizeStudyQuizPayload(candidate.quiz);
+    }
+
+    if (Array.isArray(candidate.questions)) {
+      return normalizeStudyQuizPayload(candidate.questions);
+    }
+  }
+
+  return normalizeStudyQuizPayload(value);
+}
+
+function normalizeNullableTextField(value: unknown, fieldName: string) {
+  if (value === null) {
+    return null;
+  }
+
+  if (typeof value !== "string") {
+    throw new Error(`Saved quiz ${fieldName} must be a string or null.`);
+  }
+
+  return value;
+}
+
+export function normalizeSavedStudyQuizPayload(value: unknown): SavedStudyQuiz {
+  if (!value || typeof value !== "object") {
+    throw new Error("Saved quiz entries must be objects.");
+  }
+
+  const candidate = value as Record<string, unknown>;
+  const id = normalizeTextField(candidate.id, "id");
+  const documentId = normalizeTextField(candidate.documentId, "documentId");
+  const quiz = normalizeStoredStudyQuizPayload(candidate.quiz);
+  const createdAt = normalizeTextField(candidate.createdAt, "createdAt");
+  const questionCount =
+    typeof candidate.questionCount === "number" &&
+    Number.isFinite(candidate.questionCount)
+      ? Math.max(0, Math.floor(candidate.questionCount))
+      : quiz.length;
+
+  return {
+    id,
+    documentId,
+    title: normalizeNullableTextField(candidate.title, "title"),
+    quiz,
+    questionCount,
+    createdAt,
+  };
+}
+
+export function normalizeSavedStudyQuizListPayload(
+  value: unknown,
+): SavedStudyQuiz[] {
+  if (!Array.isArray(value)) {
+    throw new Error("Saved quiz response must be an array.");
+  }
+
+  return value.map(normalizeSavedStudyQuizPayload);
 }

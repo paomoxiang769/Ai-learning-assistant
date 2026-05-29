@@ -481,6 +481,43 @@ button.button:disabled {
   gap: 1rem;
 }
 
+.quiz-history {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.quiz-history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 1rem;
+}
+
+.quiz-history-item h4,
+.quiz-history-item p {
+  margin: 0;
+}
+
+.quiz-history-item h4 {
+  font-size: 1rem;
+}
+
+.quiz-history-item p {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.quiz-history-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
 .quiz-question-meta {
   display: flex;
   align-items: center;
@@ -534,6 +571,13 @@ button.button:disabled {
   border-radius: 8px;
   background: var(--surface);
   padding: 1rem;
+}
+
+.list-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
 }
 
 .eyebrow {

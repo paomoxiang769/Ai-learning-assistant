@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 type UploadFormProps = {
   error?: string;
   message?: string;
+  warning?: string;
 };
 
 const ALLOWED_FILE_TYPES = new Set(["application/pdf", "text/plain"]);
@@ -22,7 +23,7 @@ function isAllowedDocumentFile(file: File) {
   return ALLOWED_FILE_TYPES.has(file.type) || hasAllowedExtension(file.name);
 }
 
-export function UploadForm({ error, message }: UploadFormProps) {
+export function UploadForm({ error, message, warning }: UploadFormProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [clientError, setClientError] = useState("");
 
@@ -70,6 +71,7 @@ export function UploadForm({ error, message }: UploadFormProps) {
 
       {clientError ? <p className="form-message error">{clientError}</p> : null}
       {error ? <p className="form-message error">{error}</p> : null}
+      {warning ? <p className="form-message warning">{warning}</p> : null}
       {message ? <p className="form-message success">{message}</p> : null}
 
       <div className="button-row">
