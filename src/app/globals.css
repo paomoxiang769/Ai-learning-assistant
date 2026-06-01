@@ -121,6 +121,10 @@ a {
   margin-top: 1.5rem;
 }
 
+.compact-button-row {
+  margin-top: 0;
+}
+
 .button {
   display: inline-flex;
   align-items: center;
@@ -569,6 +573,27 @@ button.button:disabled {
 
 .study-note-preview p {
   color: var(--foreground);
+}
+
+.ai-review-card {
+  display: grid;
+  gap: 1rem;
+}
+
+.ai-review-result {
+  display: grid;
+  gap: 0.75rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+
+.review-advice {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--foreground);
+  font: inherit;
+  line-height: 1.6;
 }
 
 .list-item {

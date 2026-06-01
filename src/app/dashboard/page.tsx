@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AiReviewCard } from "./ai-review-card";
 import { loadDashboardOverview } from "@/lib/dashboard";
 import { createClient } from "@/lib/supabase/server";
 
@@ -82,6 +83,10 @@ export default async function DashboardPage() {
           <p>Quizzes: {overview.studyActivitySummary.quizzes}</p>
           <p>Notes: {overview.studyActivitySummary.notes}</p>
         </article>
+      </section>
+
+      <section className="parsed-text-section" aria-label="AI Review">
+        <AiReviewCard />
       </section>
 
       <section className="list-section parsed-text-section" aria-label="Recent documents">
