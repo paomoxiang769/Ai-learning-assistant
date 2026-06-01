@@ -11,6 +11,10 @@ type DashboardCountQuery = {
     column: string;
     value: string;
   }>;
+  gteFilters?: Array<{
+    column: string;
+    value: string;
+  }>;
 };
 
 type DocumentCountRow = {
@@ -36,6 +40,10 @@ type DashboardQuizDocumentRow = {
   file_name: string;
 };
 
+type DashboardActivityRow = {
+  document_id: string;
+};
+
 export type DashboardRecentDocument = {
   id: string;
   fileName: string;
@@ -53,11 +61,27 @@ export type DashboardRecentQuiz = {
   href: string;
 };
 
+export type DashboardMostStudiedDocument = {
+  id: string;
+  title: string;
+  score: number;
+  href: string;
+};
+
+export type DashboardStudyActivitySummary = {
+  chats: number;
+  quizzes: number;
+  notes: number;
+};
+
 export type DashboardOverview = {
   totalDocuments: number;
   processedDocuments: number;
   totalSavedQuizzes: number;
   totalChatMessages: number;
+  totalNotes: number;
+  mostStudiedDocument: DashboardMostStudiedDocument | null;
+  studyActivitySummary: DashboardStudyActivitySummary;
   recentDocuments: DashboardRecentDocument[];
   recentQuizzes: DashboardRecentQuiz[];
 };
@@ -75,6 +99,10 @@ async function loadCount(
 
     for (const filter of query.filters ?? []) {
       builder = builder.eq(filter.column, filter.value);
+    }
+
+    for (const filter of query.gteFilters ?? []) {
+      builder = builder.gte(filter.column, filter.value);
     }
 
     const { count, error } = (await builder) as {
@@ -190,18 +218,201 @@ async function loadRecentQuizzes(
   })) satisfies DashboardRecentQuiz[];
 }
 
+function getSevenDayCutoff(now: Date) {
+  const sevenDaysInMilliseconds = 7 * 24 * 60 * 60 * 1000;
+  return new Date(now.getTime() - sevenDaysInMilliseconds).toISOString();
+}
+
+async function loadStudyActivitySummary(
+  supabase: DashboardSupabaseClient,
+  userId: string,
+  now: Date,
+): Promise<DashboardStudyActivitySummary> {
+  const cutoff = getSevenDayCutoff(now);
+  const [chats, quizzes, notes] = await Promise.all([
+    loadCount(
+      supabase,
+      {
+        table: "document_chat_messages",
+        label: "recent chat activity count",
+        gteFilters: [
+          {
+            column: "created_at",
+            value: cutoff,
+          },
+        ],
+      },
+      userId,
+    ),
+    loadCount(
+      supabase,
+      {
+        table: "document_quizzes",
+        label: "recent quiz activity count",
+        gteFilters: [
+          {
+            column: "created_at",
+            value: cutoff,
+          },
+        ],
+      },
+      userId,
+    ),
+    loadCount(
+      supabase,
+      {
+        table: "document_notes",
+        label: "recent note activity count",
+        gteFilters: [
+          {
+            column: "created_at",
+            value: cutoff,
+          },
+        ],
+      },
+      userId,
+    ),
+  ]);
+
+  return {
+    chats,
+    quizzes,
+    notes,
+  };
+}
+
+async function loadDocumentActivityRows(
+  supabase: DashboardSupabaseClient,
+  table: string,
+  label: string,
+  userId: string,
+) {
+  try {
+    const { data, error } = (await supabase
+      .from(table)
+      .select("document_id")
+      .eq("user_id", userId)) as {
+      data: DashboardActivityRow[] | null;
+      error: {
+        message: string;
+      } | null;
+    };
+
+    if (error) {
+      console.error(
+        `Dashboard warning: unable to load ${label}; using empty activity.`,
+        error,
+      );
+      return [];
+    }
+
+    return data ?? [];
+  } catch (error) {
+    console.error(
+      `Dashboard warning: unable to load ${label}; using empty activity.`,
+      error,
+    );
+    return [];
+  }
+}
+
+async function loadMostStudiedDocument(
+  supabase: DashboardSupabaseClient,
+  userId: string,
+): Promise<DashboardMostStudiedDocument | null> {
+  const [chatRows, quizRows, noteRows] = await Promise.all([
+    loadDocumentActivityRows(
+      supabase,
+      "document_chat_messages",
+      "chat activity rows",
+      userId,
+    ),
+    loadDocumentActivityRows(
+      supabase,
+      "document_quizzes",
+      "quiz activity rows",
+      userId,
+    ),
+    loadDocumentActivityRows(
+      supabase,
+      "document_notes",
+      "note activity rows",
+      userId,
+    ),
+  ]);
+
+  const scoreByDocumentId = new Map<string, number>();
+
+  for (const row of [...chatRows, ...quizRows, ...noteRows]) {
+    scoreByDocumentId.set(
+      row.document_id,
+      (scoreByDocumentId.get(row.document_id) ?? 0) + 1,
+    );
+  }
+
+  const documentIds = [...scoreByDocumentId.keys()];
+
+  if (documentIds.length === 0) {
+    return null;
+  }
+
+  const { data, error } = (await supabase
+    .from("documents")
+    .select("id, file_name")
+    .eq("user_id", userId)
+    .in("id", documentIds)) as {
+    data: DashboardQuizDocumentRow[] | null;
+    error: {
+      message: string;
+    } | null;
+  };
+
+  if (error) {
+    console.error(
+      "Dashboard warning: unable to load most studied document title; using empty activity.",
+      error,
+    );
+    return null;
+  }
+
+  const documentRows = data ?? [];
+  const mostStudiedDocument = documentRows
+    .map((document) => ({
+      id: document.id,
+      title: document.file_name,
+      score: scoreByDocumentId.get(document.id) ?? 0,
+      href: `/documents/${document.id}`,
+    }))
+    .sort((first, second) => {
+      if (second.score !== first.score) {
+        return second.score - first.score;
+      }
+
+      const titleComparison = first.title.localeCompare(second.title);
+      return titleComparison === 0
+        ? first.id.localeCompare(second.id)
+        : titleComparison;
+    })[0];
+
+  return mostStudiedDocument ?? null;
+}
+
 export async function loadDashboardOverview({
   supabase,
   userId,
+  now = new Date(),
 }: {
   supabase: DashboardSupabaseClient;
   userId: string;
+  now?: Date;
 }): Promise<DashboardOverview> {
   const [
     totalDocuments,
     processedDocuments,
     totalSavedQuizzes,
     totalChatMessages,
+    totalNotes,
+    studyActivitySummary,
     recentDocuments,
     recentQuizzes,
   ] = await Promise.all([
@@ -243,15 +454,29 @@ export async function loadDashboardOverview({
       },
       userId,
     ),
+    loadCount(
+      supabase,
+      {
+        table: "document_notes",
+        label: "note count",
+      },
+      userId,
+    ),
+    loadStudyActivitySummary(supabase, userId, now),
     loadRecentDocuments(supabase, userId),
     loadRecentQuizzes(supabase, userId),
   ]);
+
+  const mostStudiedDocument = await loadMostStudiedDocument(supabase, userId);
 
   return {
     totalDocuments,
     processedDocuments,
     totalSavedQuizzes,
     totalChatMessages,
+    totalNotes,
+    mostStudiedDocument,
+    studyActivitySummary,
     recentDocuments,
     recentQuizzes,
   };

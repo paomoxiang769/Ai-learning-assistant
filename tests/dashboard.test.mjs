@@ -34,6 +34,7 @@ function createSupabaseStub(tableHandlers) {
           selectOptions: null,
           eq: [],
           in: [],
+          gte: [],
           order: [],
           limit: null,
         };
@@ -53,6 +54,11 @@ function createSupabaseStub(tableHandlers) {
           in(column, values) {
             state.in.push([column, values]);
             operations.push(["in", table, column, values]);
+            return this;
+          },
+          gte(column, value) {
+            state.gte.push([column, value]);
+            operations.push(["gte", table, column, value]);
             return this;
           },
           order(column, options) {
@@ -132,6 +138,21 @@ test("loadDashboardOverview returns user-scoped counts and recent activity", asy
           },
         ]);
       },
+      (state) => {
+        assert.equal(state.select, "id, file_name");
+        assert.deepEqual(state.eq, [["user_id", "user-1"]]);
+        assert.deepEqual(state.in, [["id", ["document-3", "document-2"]]]);
+        return createQueryResponse([
+          {
+            id: "document-2",
+            file_name: "Graphs.txt",
+          },
+          {
+            id: "document-3",
+            file_name: "Trees.pdf",
+          },
+        ]);
+      },
     ],
     document_quizzes: [
       (state) => {
@@ -139,6 +160,13 @@ test("loadDashboardOverview returns user-scoped counts and recent activity", asy
         assert.deepEqual(state.selectOptions, { count: "exact", head: true });
         assert.deepEqual(state.eq, [["user_id", "user-1"]]);
         return createQueryResponse(null, null, 6);
+      },
+      (state) => {
+        assert.equal(state.select, "id");
+        assert.deepEqual(state.selectOptions, { count: "exact", head: true });
+        assert.deepEqual(state.eq, [["user_id", "user-1"]]);
+        assert.deepEqual(state.gte, [["created_at", "2026-05-25T00:00:00.000Z"]]);
+        return createQueryResponse(null, null, 4);
       },
       (state) => {
         assert.equal(state.select, "id, document_id, quiz_json, created_at");
@@ -182,6 +210,15 @@ test("loadDashboardOverview returns user-scoped counts and recent activity", asy
           },
         ]);
       },
+      (state) => {
+        assert.equal(state.select, "document_id");
+        assert.deepEqual(state.eq, [["user_id", "user-1"]]);
+        return createQueryResponse([
+          { document_id: "document-3" },
+          { document_id: "document-2" },
+          { document_id: "document-2" },
+        ]);
+      },
     ],
     document_chat_messages: [
       (state) => {
@@ -190,12 +227,53 @@ test("loadDashboardOverview returns user-scoped counts and recent activity", asy
         assert.deepEqual(state.eq, [["user_id", "user-1"]]);
         return createQueryResponse(null, null, 18);
       },
+      (state) => {
+        assert.equal(state.select, "id");
+        assert.deepEqual(state.selectOptions, { count: "exact", head: true });
+        assert.deepEqual(state.eq, [["user_id", "user-1"]]);
+        assert.deepEqual(state.gte, [["created_at", "2026-05-25T00:00:00.000Z"]]);
+        return createQueryResponse(null, null, 12);
+      },
+      (state) => {
+        assert.equal(state.select, "document_id");
+        assert.deepEqual(state.eq, [["user_id", "user-1"]]);
+        return createQueryResponse([
+          { document_id: "document-3" },
+          { document_id: "document-3" },
+          { document_id: "document-3" },
+          { document_id: "document-2" },
+        ]);
+      },
+    ],
+    document_notes: [
+      (state) => {
+        assert.equal(state.select, "id");
+        assert.deepEqual(state.selectOptions, { count: "exact", head: true });
+        assert.deepEqual(state.eq, [["user_id", "user-1"]]);
+        return createQueryResponse(null, null, 9);
+      },
+      (state) => {
+        assert.equal(state.select, "id");
+        assert.deepEqual(state.selectOptions, { count: "exact", head: true });
+        assert.deepEqual(state.eq, [["user_id", "user-1"]]);
+        assert.deepEqual(state.gte, [["created_at", "2026-05-25T00:00:00.000Z"]]);
+        return createQueryResponse(null, null, 6);
+      },
+      (state) => {
+        assert.equal(state.select, "document_id");
+        assert.deepEqual(state.eq, [["user_id", "user-1"]]);
+        return createQueryResponse([
+          { document_id: "document-2" },
+          { document_id: "document-3" },
+        ]);
+      },
     ],
   });
 
   const overview = await loadDashboardOverview({
     supabase: client,
     userId: "user-1",
+    now: new Date("2026-06-01T00:00:00.000Z"),
   });
 
   assert.deepEqual(overview, {
@@ -203,6 +281,18 @@ test("loadDashboardOverview returns user-scoped counts and recent activity", asy
     processedDocuments: 4,
     totalSavedQuizzes: 6,
     totalChatMessages: 18,
+    totalNotes: 9,
+    mostStudiedDocument: {
+      id: "document-3",
+      title: "Trees.pdf",
+      score: 5,
+      href: "/documents/document-3",
+    },
+    studyActivitySummary: {
+      chats: 12,
+      quizzes: 4,
+      notes: 6,
+    },
     recentDocuments: [
       {
         id: "document-3",
@@ -241,15 +331,19 @@ test("loadDashboardOverview returns user-scoped counts and recent activity", asy
 
   assert.equal(
     operations.filter(([name, table]) => name === "from" && table === "documents").length,
-    4,
+    5,
   );
   assert.equal(
     operations.filter(([name, table]) => name === "from" && table === "document_quizzes").length,
-    2,
+    4,
   );
   assert.equal(
     operations.filter(([name, table]) => name === "from" && table === "document_chat_messages").length,
-    1,
+    3,
+  );
+  assert.equal(
+    operations.filter(([name, table]) => name === "from" && table === "document_notes").length,
+    3,
   );
 });
 
@@ -262,12 +356,23 @@ test("loadDashboardOverview returns zero counts and empty lists when no user dat
     ],
     document_quizzes: [
       () => createQueryResponse(null, null, null),
+      () => createQueryResponse(null, null, null),
       (state) => {
         assert.equal(state.limit, 5);
         return createQueryResponse([]);
       },
+      () => createQueryResponse([]),
     ],
-    document_chat_messages: [() => createQueryResponse(null, null, null)],
+    document_chat_messages: [
+      () => createQueryResponse(null, null, null),
+      () => createQueryResponse(null, null, null),
+      () => createQueryResponse([]),
+    ],
+    document_notes: [
+      () => createQueryResponse(null, null, null),
+      () => createQueryResponse(null, null, null),
+      () => createQueryResponse([]),
+    ],
   });
 
   const overview = await loadDashboardOverview({
@@ -280,6 +385,13 @@ test("loadDashboardOverview returns zero counts and empty lists when no user dat
     processedDocuments: 0,
     totalSavedQuizzes: 0,
     totalChatMessages: 0,
+    totalNotes: 0,
+    mostStudiedDocument: null,
+    studyActivitySummary: {
+      chats: 0,
+      quizzes: 0,
+      notes: 0,
+    },
     recentDocuments: [],
     recentQuizzes: [],
   });
@@ -300,9 +412,20 @@ test("loadDashboardOverview returns zero and logs a warning when a count query f
     ],
     document_quizzes: [
       () => createQueryResponse(null, null, 0),
+      () => createQueryResponse(null, null, 0),
+      () => createQueryResponse([]),
       () => createQueryResponse([]),
     ],
-    document_chat_messages: [() => createQueryResponse(null, null, 0)],
+    document_chat_messages: [
+      () => createQueryResponse(null, null, 0),
+      () => createQueryResponse(null, null, 0),
+      () => createQueryResponse([]),
+    ],
+    document_notes: [
+      () => createQueryResponse(null, null, 0),
+      () => createQueryResponse(null, null, 0),
+      () => createQueryResponse([]),
+    ],
   });
 
   try {
@@ -316,6 +439,13 @@ test("loadDashboardOverview returns zero and logs a warning when a count query f
       processedDocuments: 0,
       totalSavedQuizzes: 0,
       totalChatMessages: 0,
+      totalNotes: 0,
+      mostStudiedDocument: null,
+      studyActivitySummary: {
+        chats: 0,
+        quizzes: 0,
+        notes: 0,
+      },
       recentDocuments: [],
       recentQuizzes: [],
     });

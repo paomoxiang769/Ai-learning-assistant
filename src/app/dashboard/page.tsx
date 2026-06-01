@@ -50,6 +50,38 @@ export default async function DashboardPage() {
           <h2>Total chat messages</h2>
           <p>{overview.totalChatMessages}</p>
         </article>
+        <article className="card">
+          <h2>Total notes</h2>
+          <p>{overview.totalNotes}</p>
+        </article>
+      </section>
+
+      <section className="grid grid-3 parsed-text-section" aria-label="Study analytics">
+        <article className="card">
+          <h2>Most studied document</h2>
+          {overview.mostStudiedDocument ? (
+            <>
+              <p>{overview.mostStudiedDocument.title}</p>
+              <p>Score: {overview.mostStudiedDocument.score}</p>
+              <div className="button-row">
+                <Link
+                  className="button secondary"
+                  href={overview.mostStudiedDocument.href}
+                >
+                  Open
+                </Link>
+              </div>
+            </>
+          ) : (
+            <p>No study activity yet</p>
+          )}
+        </article>
+        <article className="card">
+          <h2>Study activity summary</h2>
+          <p>Chats: {overview.studyActivitySummary.chats}</p>
+          <p>Quizzes: {overview.studyActivitySummary.quizzes}</p>
+          <p>Notes: {overview.studyActivitySummary.notes}</p>
+        </article>
       </section>
 
       <section className="list-section parsed-text-section" aria-label="Recent documents">
