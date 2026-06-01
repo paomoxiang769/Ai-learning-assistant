@@ -19,7 +19,8 @@ export async function middleware(request: NextRequest) {
 
   const isProtectedRoute =
     request.nextUrl.pathname.startsWith("/dashboard") ||
-    request.nextUrl.pathname.startsWith("/documents");
+    request.nextUrl.pathname.startsWith("/documents") ||
+    request.nextUrl.pathname.startsWith("/review");
 
   if (isProtectedRoute && !user) {
     const redirectUrl = request.nextUrl.clone();

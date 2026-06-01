@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { getInitialStudyNote } from "@/lib/study-notes-ui";
 
 type StudyNote = {
   id: string;
@@ -14,6 +15,7 @@ type StudyNote = {
 type StudyNotesPanelProps = {
   documentId: string;
   canGenerate: boolean;
+  initialNoteId?: string;
 };
 
 function formatNoteCreatedAt(value: string) {
@@ -57,9 +59,21 @@ function getNoteTypeLabel(noteType: StudyNote["noteType"]) {
   return noteType === "ai_summary" ? "AI notes" : "Manual";
 }
 
-export function StudyNotesPanel({ documentId, canGenerate }: StudyNotesPanelProps) {
+export function StudyNotesPanel({
+  documentId,
+  canGenerate,
+  initialNoteId,
+}: StudyNotesPanelProps) {
+  const notesSectionRef = useRef<HTMLElement | null>(null);
   const [notes, setNotes] = useState<StudyNote[]>([]);
   const [loadedNote, setLoadedNote] = useState<StudyNote | null>(null);
+  const [handledInitialNoteId, setHandledInitialNoteId] = useState<string | null>(
+    null,
+  );
+  const [pendingScrollNoteId, setPendingScrollNoteId] = useState<string | null>(
+    null,
+  );
+  const [hasLoadedNotesHistory, setHasLoadedNotesHistory] = useState(false);
   const [manualTitle, setManualTitle] = useState("");
   const [manualContent, setManualContent] = useState("");
   const [error, setError] = useState("");
@@ -72,6 +86,7 @@ export function StudyNotesPanel({ documentId, canGenerate }: StudyNotesPanelProp
 
   async function loadNotesHistory() {
     setHistoryError("");
+    setHasLoadedNotesHistory(false);
     setIsLoadingHistory(true);
 
     try {
@@ -97,6 +112,7 @@ export function StudyNotesPanel({ documentId, canGenerate }: StudyNotesPanelProp
           : "Unable to load notes history right now.",
       );
     } finally {
+      setHasLoadedNotesHistory(true);
       setIsLoadingHistory(false);
     }
   }
@@ -137,6 +153,7 @@ export function StudyNotesPanel({ documentId, canGenerate }: StudyNotesPanelProp
       } finally {
         if (isMounted) {
           setIsLoadingHistory(false);
+          setHasLoadedNotesHistory(true);
         }
       }
     }
@@ -147,6 +164,71 @@ export function StudyNotesPanel({ documentId, canGenerate }: StudyNotesPanelProp
       isMounted = false;
     };
   }, [documentId]);
+
+  useEffect(() => {
+    if (
+      !initialNoteId ||
+      !hasLoadedNotesHistory ||
+      isLoadingHistory ||
+      handledInitialNoteId === initialNoteId
+    ) {
+      return;
+    }
+
+    if (historyError) {
+      setHandledInitialNoteId(initialNoteId);
+      return;
+    }
+
+    const matchingNote = getInitialStudyNote(notes, initialNoteId);
+
+    if (!matchingNote) {
+      setHistoryError("Saved note not found.");
+      setHandledInitialNoteId(initialNoteId);
+
+      return;
+    }
+
+    setError("");
+    setSuccessMessage("");
+    setLoadedNote(matchingNote);
+    setHandledInitialNoteId(initialNoteId);
+    setPendingScrollNoteId(initialNoteId);
+  }, [
+    handledInitialNoteId,
+    hasLoadedNotesHistory,
+    historyError,
+    initialNoteId,
+    isLoadingHistory,
+    notes,
+  ]);
+
+  useEffect(() => {
+    if (
+      !pendingScrollNoteId ||
+      loadedNote?.id !== pendingScrollNoteId
+    ) {
+      return;
+    }
+
+    let timeoutId: number | undefined;
+    const animationFrameId = window.requestAnimationFrame(() => {
+      timeoutId = window.setTimeout(() => {
+        notesSectionRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+        setPendingScrollNoteId(null);
+      }, 100);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameId);
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [loadedNote?.id, pendingScrollNoteId]);
 
   async function handleGenerateNotes() {
     if (!canGenerate || isGenerating) {
@@ -299,8 +381,11 @@ export function StudyNotesPanel({ documentId, canGenerate }: StudyNotesPanelProp
 
   return (
     <section
+      ref={notesSectionRef}
       className="list-section parsed-text-section"
       aria-label="Study notes"
+      id="notes-section"
+      style={{ scrollMarginTop: "5rem" }}
     >
       <div className="section-heading">
         <h2>Study Notes</h2>

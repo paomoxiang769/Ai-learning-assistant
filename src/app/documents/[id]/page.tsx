@@ -15,6 +15,7 @@ type DocumentDetailPageProps = {
     error?: string;
     warning?: string;
     quizId?: string;
+    noteId?: string;
   }>;
 };
 
@@ -185,6 +186,7 @@ export default async function DocumentDetailPage({
       <StudyNotesPanel
         documentId={userDocument.id}
         canGenerate={canAskDocument}
+        initialNoteId={query.noteId}
       />
 
       <div className="button-row">
