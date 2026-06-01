@@ -1,5 +1,14 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { loadDashboardOverview } from "@/lib/dashboard";
 import { createClient } from "@/lib/supabase/server";
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("en", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -11,27 +20,102 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
+  const overview = await loadDashboardOverview({
+    supabase,
+    userId: user.id,
+  });
+
   return (
     <main className="page">
       <section className="page-header">
         <p className="eyebrow">Dashboard</p>
-        <h1>Welcome back.</h1>
+        <h1>Learning progress</h1>
         <p>Signed in as {user.email}</p>
       </section>
 
-      <section className="grid grid-3" aria-label="Dashboard sections">
+      <section className="grid grid-3" aria-label="Dashboard stats">
         <article className="card">
-          <h2>Account</h2>
-          <p>{user.email}</p>
+          <h2>Total documents</h2>
+          <p>{overview.totalDocuments}</p>
         </article>
         <article className="card">
-          <h2>Quiz practice</h2>
-          <p>Quiz attempts and practice status will appear here later.</p>
+          <h2>Processed documents</h2>
+          <p>{overview.processedDocuments}</p>
         </article>
         <article className="card">
-          <h2>Study progress</h2>
-          <p>Learning progress summaries will be added in a future feature.</p>
+          <h2>Total saved quizzes</h2>
+          <p>{overview.totalSavedQuizzes}</p>
         </article>
+        <article className="card">
+          <h2>Total chat messages</h2>
+          <p>{overview.totalChatMessages}</p>
+        </article>
+      </section>
+
+      <section className="list-section parsed-text-section" aria-label="Recent documents">
+        <div className="section-heading">
+          <h2>Recent documents</h2>
+          <p>Latest 5 uploads</p>
+        </div>
+
+        {overview.recentDocuments.length === 0 ? (
+          <article className="card">
+            <h2>No recent documents</h2>
+            <p>Your latest uploaded documents will appear here.</p>
+          </article>
+        ) : (
+          <div className="list">
+            {overview.recentDocuments.map((document) => (
+              <article className="list-item" key={document.id}>
+                <div>
+                  <h2>{document.fileName}</h2>
+                  <p>
+                    {document.processingStatus} - Uploaded{" "}
+                    {formatDateTime(document.createdAt)}
+                  </p>
+                </div>
+                <div className="list-item-actions">
+                  <Link className="button secondary" href={document.href}>
+                    View detail
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="list-section parsed-text-section" aria-label="Recent quizzes">
+        <div className="section-heading">
+          <h2>Recent quizzes</h2>
+          <p>Latest 5 saved quizzes</p>
+        </div>
+
+        {overview.recentQuizzes.length === 0 ? (
+          <article className="card">
+            <h2>No recent quizzes</h2>
+            <p>Your saved quiz history will appear here.</p>
+          </article>
+        ) : (
+          <div className="list">
+            {overview.recentQuizzes.map((quiz) => (
+              <article className="list-item" key={quiz.id}>
+                <div>
+                  <h2>{quiz.documentTitle}</h2>
+                  <p>
+                    {quiz.questionCount} questions - Saved{" "}
+                    {formatDateTime(quiz.createdAt)}
+                  </p>
+                </div>
+                <div className="list-item-actions">
+                  <Link className="button secondary" href={quiz.href}>
+                    Continue quiz
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
       <form className="button-row" action="/api/auth" method="post">

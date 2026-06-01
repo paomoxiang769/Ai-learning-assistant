@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   normalizeSavedStudyQuizListPayload,
   normalizeStudyQuizPayload,
@@ -11,6 +11,7 @@ import {
 type StudyQuizPanelProps = {
   documentId: string;
   canGenerate: boolean;
+  initialQuizId?: string;
 };
 
 const DEFAULT_QUIZ_COUNT = 5;
@@ -49,10 +50,19 @@ function normalizeGeneratedQuizPayload(value: unknown) {
 export function StudyQuizPanel({
   documentId,
   canGenerate,
+  initialQuizId,
 }: StudyQuizPanelProps) {
+  const quizSectionRef = useRef<HTMLElement | null>(null);
   const [quiz, setQuiz] = useState<StudyQuizQuestion[]>([]);
   const [loadedQuizId, setLoadedQuizId] = useState<string | null>(null);
   const [savedQuizzes, setSavedQuizzes] = useState<SavedStudyQuiz[]>([]);
+  const [handledInitialQuizId, setHandledInitialQuizId] = useState<string | null>(
+    null,
+  );
+  const [pendingScrollQuizId, setPendingScrollQuizId] = useState<string | null>(
+    null,
+  );
+  const [hasLoadedQuizHistory, setHasLoadedQuizHistory] = useState(false);
   const [revealedAnswers, setRevealedAnswers] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [historyError, setHistoryError] = useState("");
@@ -62,6 +72,7 @@ export function StudyQuizPanel({
 
   async function loadQuizHistory() {
     setHistoryError("");
+    setHasLoadedQuizHistory(false);
     setIsLoadingHistory(true);
 
     try {
@@ -87,6 +98,7 @@ export function StudyQuizPanel({
           : "Unable to load quiz history right now.",
       );
     } finally {
+      setHasLoadedQuizHistory(true);
       setIsLoadingHistory(false);
     }
   }
@@ -126,6 +138,7 @@ export function StudyQuizPanel({
         }
       } finally {
         if (isMounted) {
+          setHasLoadedQuizHistory(true);
           setIsLoadingHistory(false);
         }
       }
@@ -137,6 +150,75 @@ export function StudyQuizPanel({
       isMounted = false;
     };
   }, [documentId]);
+
+  useEffect(() => {
+    if (
+      !initialQuizId ||
+      !hasLoadedQuizHistory ||
+      isLoadingHistory ||
+      handledInitialQuizId === initialQuizId
+    ) {
+      return;
+    }
+
+    if (historyError) {
+      setHandledInitialQuizId(initialQuizId);
+      return;
+    }
+
+    const matchingQuiz = savedQuizzes.find(
+      (savedQuiz) => savedQuiz.id === initialQuizId,
+    );
+
+    if (!matchingQuiz) {
+      setHistoryError("Saved quiz not found.");
+      setHandledInitialQuizId(initialQuizId);
+
+      return;
+    }
+
+    setError("");
+    setQuiz(matchingQuiz.quiz);
+    setLoadedQuizId(matchingQuiz.id);
+    setRevealedAnswers([]);
+    setHandledInitialQuizId(initialQuizId);
+    setPendingScrollQuizId(initialQuizId);
+  }, [
+    handledInitialQuizId,
+    hasLoadedQuizHistory,
+    historyError,
+    initialQuizId,
+    isLoadingHistory,
+    savedQuizzes,
+  ]);
+
+  useEffect(() => {
+    if (
+      !pendingScrollQuizId ||
+      loadedQuizId !== pendingScrollQuizId ||
+      quiz.length === 0
+    ) {
+      return;
+    }
+
+    let timeoutId: number | undefined;
+    const animationFrameId = window.requestAnimationFrame(() => {
+      timeoutId = window.setTimeout(() => {
+        quizSectionRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+        setPendingScrollQuizId(null);
+      }, 100);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameId);
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [loadedQuizId, pendingScrollQuizId, quiz.length]);
 
   async function handleGenerateQuiz() {
     if (!canGenerate || isSubmitting) {
@@ -260,7 +342,13 @@ export function StudyQuizPanel({
   }
 
   return (
-    <section className="list-section parsed-text-section" aria-label="Generate quiz">
+    <section
+      ref={quizSectionRef}
+      className="list-section parsed-text-section"
+      aria-label="Generate quiz"
+      id="quiz-section"
+      style={{ scrollMarginTop: "5rem" }}
+    >
       <div className="section-heading">
         <h2>Generate Quiz</h2>
         <p>Create 5 practice questions from this document</p>

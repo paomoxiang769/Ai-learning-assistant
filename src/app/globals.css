@@ -562,6 +562,15 @@ button.button:disabled {
   color: var(--foreground);
 }
 
+.study-note-preview {
+  display: grid;
+  gap: 1rem;
+}
+
+.study-note-preview p {
+  color: var(--foreground);
+}
+
 .list-item {
   display: flex;
   align-items: center;
