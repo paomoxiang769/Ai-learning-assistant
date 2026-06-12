@@ -35,20 +35,52 @@ export default async function KnowledgeBaseChatPage() {
   ).length;
 
   return (
-    <main className="page">
-      <section className="page-header">
-        <p className="eyebrow">Knowledge Base</p>
-        <h1>Chat across your materials.</h1>
-        <p>
-          Ask one question across all processed study documents without binding the
-          answer to a single file.
-        </p>
+    <main className="page workspace-page">
+      <section className="workspace-hero" aria-label="Knowledge base overview">
+        <div>
+          <p className="eyebrow">Knowledge Base</p>
+          <h1>Chat across your materials.</h1>
+          <p>
+            Ask one question across all processed study documents without binding the
+            answer to a single file.
+          </p>
+        </div>
+        <aside className="workspace-hero-card">
+          <span className="panel-kicker">Retrieval scope</span>
+          <strong>{processedDocumentCount}</strong>
+          <p>processed documents available for cross-document answers.</p>
+        </aside>
       </section>
 
-      <KnowledgeBaseChatForm
-        canAsk={processedDocumentCount > 0}
-        processedDocumentCount={processedDocumentCount}
-      />
+      <section className="knowledge-workspace-grid" aria-label="Knowledge base workspace">
+        <KnowledgeBaseChatForm
+          canAsk={processedDocumentCount > 0}
+          processedDocumentCount={processedDocumentCount}
+        />
+
+        <aside className="knowledge-side-panel">
+          <span className="panel-kicker">AI companion</span>
+          <h2>Cross-document retrieval</h2>
+          <p>
+            This mode searches across your processed documents and keeps the chat
+            unbound to a single file by design.
+          </p>
+          <div className="activity-list">
+            <div className="activity-row">
+              <span>Processed sources</span>
+              <strong>{processedDocumentCount}</strong>
+            </div>
+            <div className="activity-row">
+              <span>Persistence</span>
+              <strong>Session</strong>
+            </div>
+            <div className="activity-row">
+              <span>Citations</span>
+              <strong>Visible</strong>
+            </div>
+          </div>
+        </aside>
+      </section>
 
       <div className="button-row">
         <Link className="button secondary" href="/documents">

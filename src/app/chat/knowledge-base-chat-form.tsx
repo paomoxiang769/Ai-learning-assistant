@@ -109,48 +109,80 @@ export function KnowledgeBaseChatForm({
   });
 
   return (
-    <section className="list-section parsed-text-section" aria-label="Knowledge base chat">
+    <section
+      className="list-section knowledge-chat-panel knowledge-command-shell"
+      aria-label="Knowledge base chat"
+    >
       <div className="section-heading">
-        <h2>Knowledge base chat</h2>
-        <p>{processedDocumentCount} processed documents</p>
+        <div>
+          <h2>Knowledge base chat</h2>
+          <p>{processedDocumentCount} processed documents</p>
+        </div>
       </div>
 
-      <form className="ask-document-form" onSubmit={handleSubmit}>
-        <label className="form-field" htmlFor="knowledge-base-question">
-          <span>Your question</span>
-          <textarea
-            id="knowledge-base-question"
-            name="question"
-            value={question}
-            onChange={(event) => setQuestion(event.target.value)}
-            placeholder="Compare KMP and Rabin-Karp from my materials"
-            rows={4}
-            disabled={viewModel.disableAsk}
-            required
-          />
-        </label>
+      <div className="knowledge-console-grid">
+        <form
+          className="ask-document-form knowledge-chat-form knowledge-prompt-dock"
+          onSubmit={handleSubmit}
+        >
+          <label className="form-field" htmlFor="knowledge-base-question">
+            <span>Your question</span>
+            <textarea
+              id="knowledge-base-question"
+              name="question"
+              value={question}
+              onChange={(event) => setQuestion(event.target.value)}
+              placeholder="Compare KMP and Rabin-Karp from my materials"
+              rows={4}
+              disabled={viewModel.disableAsk}
+              required
+            />
+          </label>
 
-        {!canAsk ? (
-          <p className="form-message warning">
-            Upload and process at least one document before using knowledge base chat.
-          </p>
-        ) : null}
+          {!canAsk ? (
+            <p className="form-message warning">
+              Upload and process at least one document before using knowledge base chat.
+            </p>
+          ) : null}
 
-        {error ? <p className="form-message error">{error}</p> : null}
+          {error ? <p className="form-message error">{error}</p> : null}
 
-        <div className="button-row">
-          <button className="button" type="submit" disabled={viewModel.disableAsk}>
-            Ask
-          </button>
-        </div>
-      </form>
+          <div className="button-row">
+            <button className="button" type="submit" disabled={viewModel.disableAsk}>
+              Ask
+            </button>
+          </div>
+        </form>
+
+        <aside className="knowledge-source-rail" aria-label="Knowledge source status">
+          <span className="panel-kicker">Source rail</span>
+          <h3>{processedDocumentCount} processed sources</h3>
+          <div className="activity-list">
+            <div className="activity-row">
+              <span>Mode</span>
+              <strong>Cross-doc</strong>
+            </div>
+            <div className="activity-row">
+              <span>History</span>
+              <strong>{messages.length}</strong>
+            </div>
+            <div className="activity-row">
+              <span>Citations</span>
+              <strong>Visible</strong>
+            </div>
+          </div>
+        </aside>
+      </div>
 
       {viewModel.showEmptyState ? (
-        <article className="card chat-empty-state">
+        <article className="card chat-empty-state knowledge-empty-state knowledge-answer-stream">
           <p>Ask across all your processed materials.</p>
         </article>
       ) : (
-        <div className="chat-thread" aria-label="Knowledge base chat history">
+        <div
+          className="chat-thread knowledge-answer-stream"
+          aria-label="Knowledge base chat history"
+        >
           {messages.map((message) => (
             <article
               className={`card chat-message ${message.role === "user" ? "chat-message-user" : "chat-message-assistant"}`}

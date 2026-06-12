@@ -86,9 +86,7 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.redirect(new URL("/login", request.url), {
-      status: 303,
-    });
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
   const formData = await request.formData();

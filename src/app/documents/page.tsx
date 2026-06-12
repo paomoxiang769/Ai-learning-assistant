@@ -57,62 +57,101 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
     .order("created_at", { ascending: false });
 
   const userDocuments = (documents ?? []) as DocumentRow[];
+  const totalLibrarySize = userDocuments.reduce(
+    (totalSize, document) => totalSize + document.file_size,
+    0,
+  );
 
   return (
-    <main className="page">
-      <section className="page-header">
-        <p className="eyebrow">Documents</p>
-        <h1>Study materials</h1>
-        <p>Upload PDF or TXT learning materials and keep them tied to your account.</p>
+    <main className="page workspace-page">
+      <section className="workspace-hero" aria-label="Documents overview">
+        <div>
+          <p className="eyebrow">Documents</p>
+          <h1>Study materials</h1>
+          <p>Upload PDF or TXT learning materials and keep them tied to your account.</p>
+        </div>
+        <aside className="workspace-hero-card">
+          <span className="panel-kicker">Library status</span>
+          <strong>{userDocuments.length}</strong>
+          <p>uploaded files ready for summaries, chat, quizzes, and notes.</p>
+        </aside>
       </section>
 
-      <UploadForm
-        error={params.error}
-        message={params.message}
-        warning={params.warning}
-      />
-
-      <section className="list-section" aria-label="Uploaded document list">
-        <div className="section-heading">
-          <h2>Your files</h2>
-          <p>{userDocuments.length} uploaded</p>
+      <section
+        className="workspace-grid source-library-shell"
+        aria-label="Document workspace"
+      >
+        <div className="workspace-side-panel source-upload-dock">
+          <div className="section-heading compact-section-heading">
+            <div>
+              <h2>Upload</h2>
+              <p>Add source material to your learning loop.</p>
+            </div>
+          </div>
+          <UploadForm
+            error={params.error}
+            message={params.message}
+            warning={params.warning}
+          />
+          <div className="source-library-meter" aria-label="Source library size">
+            <span>Total shelf size</span>
+            <strong>{formatFileSize(totalLibrarySize)}</strong>
+          </div>
         </div>
 
-        {documentsError ? (
-          <p className="form-message error">{documentsError.message}</p>
-        ) : null}
-
-        {userDocuments.length === 0 && !documentsError ? (
-          <article className="card">
-            <h2>No documents yet</h2>
-            <p>Your uploaded PDF and TXT files will appear here.</p>
-          </article>
-        ) : null}
-
-        {userDocuments.length > 0 ? (
-          <div className="list">
-            {userDocuments.map((document) => (
-              <article className="list-item" key={document.id}>
-                <div>
-                  <h2>{document.file_name}</h2>
-                  <p>
-                    {document.file_type} - {formatFileSize(document.file_size)} - Uploaded{" "}
-                    {formatUploadDate(document.created_at)}
-                  </p>
-                </div>
-                <div className="list-item-actions">
-                  <Link className="button secondary" href={`/documents/${document.id}`}>
-                    View
-                  </Link>
-                  <DeleteDocumentForm
-                    documentId={document.id}
-                    fileName={document.file_name}
-                  />
-                </div>
-              </article>
-            ))}
+        <section
+          className="list-section workspace-main-panel source-shelf-panel"
+          aria-label="Uploaded document list"
+        >
+          <div className="section-heading">
+            <div>
+              <span className="panel-kicker">Source shelf</span>
+              <h2>Your files</h2>
+              <p>{userDocuments.length} uploaded</p>
+            </div>
           </div>
-        ) : null}
+
+          {documentsError ? (
+            <p className="form-message error">{documentsError.message}</p>
+          ) : null}
+
+          {userDocuments.length === 0 && !documentsError ? (
+            <article className="card empty-card">
+              <h2>No documents yet</h2>
+              <p>Your uploaded PDF and TXT files will appear here.</p>
+            </article>
+          ) : null}
+
+          {userDocuments.length > 0 ? (
+            <div className="list source-shelf-grid">
+              {userDocuments.map((document) => (
+                <article
+                  className="list-item workspace-list-item source-file-card"
+                  key={document.id}
+                >
+                  <span className="source-lane-marker">{document.file_type}</span>
+                  <div>
+                    <span className="panel-kicker">{document.file_type}</span>
+                    <h2>{document.file_name}</h2>
+                    <p>
+                      {formatFileSize(document.file_size)} - Uploaded{" "}
+                      {formatUploadDate(document.created_at)}
+                    </p>
+                  </div>
+                  <div className="list-item-actions">
+                    <Link className="button secondary" href={`/documents/${document.id}`}>
+                      View
+                    </Link>
+                    <DeleteDocumentForm
+                      documentId={document.id}
+                      fileName={document.file_name}
+                    />
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : null}
+        </section>
       </section>
     </main>
   );

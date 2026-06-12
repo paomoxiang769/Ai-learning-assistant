@@ -83,6 +83,9 @@ export function StudyNotesPanel({
   const [isSavingManual, setIsSavingManual] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
+  const [notePendingDelete, setNotePendingDelete] = useState<StudyNote | null>(
+    null,
+  );
 
   async function loadNotesHistory() {
     setHistoryError("");
@@ -332,10 +335,6 @@ export function StudyNotesPanel({
   }
 
   async function deleteSavedNote(note: StudyNote) {
-    if (!window.confirm("Delete this saved note?")) {
-      return;
-    }
-
     setHistoryError("");
     setSuccessMessage("");
     setDeletingNoteId(note.id);
@@ -368,6 +367,7 @@ export function StudyNotesPanel({
         currentNote?.id === note.id ? null : currentNote,
       );
       setSuccessMessage("Note deleted.");
+      setNotePendingDelete(null);
     } catch (requestError) {
       setHistoryError(
         requestError instanceof Error
@@ -382,17 +382,20 @@ export function StudyNotesPanel({
   return (
     <section
       ref={notesSectionRef}
-      className="list-section parsed-text-section"
+      className="list-section parsed-text-section document-tool-panel"
       aria-label="Study notes"
       id="notes-section"
       style={{ scrollMarginTop: "5rem" }}
     >
       <div className="section-heading">
-        <h2>Study Notes</h2>
-        <p>{isLoadingHistory ? "Loading..." : `${notes.length} saved`}</p>
+        <div>
+          <span className="panel-kicker">Notes</span>
+          <h2>Study Notes</h2>
+          <p>{isLoadingHistory ? "Loading..." : `${notes.length} saved`}</p>
+        </div>
       </div>
 
-      <article className="study-quiz-form">
+      <article className="study-quiz-form document-tool-form">
         <p className="form-message">
           Generate AI study notes or save your own notes for this document.
         </p>
@@ -461,7 +464,7 @@ export function StudyNotesPanel({
         {notes.length > 0 ? (
           <div className="list">
             {notes.map((note) => (
-              <article className="quiz-history-item" key={note.id}>
+              <article className="quiz-history-item tactile-history-item" key={note.id}>
                 <div>
                   <h4>{note.title ?? "Untitled note"}</h4>
                   <p>
@@ -481,7 +484,7 @@ export function StudyNotesPanel({
                   <button
                     className="button secondary"
                     type="button"
-                    onClick={() => deleteSavedNote(note)}
+                    onClick={() => setNotePendingDelete(note)}
                     disabled={deletingNoteId === note.id}
                   >
                     {deletingNoteId === note.id ? "Deleting..." : "Delete"}
@@ -498,7 +501,7 @@ export function StudyNotesPanel({
       </div>
 
       {loadedNote ? (
-        <article className="card study-note-preview">
+        <article className="card study-note-preview tactile-question-card">
           <div className="quiz-question-meta">
             <h3>{loadedNote.title ?? "Untitled note"}</h3>
             <span className="quiz-question-type">
@@ -507,6 +510,55 @@ export function StudyNotesPanel({
           </div>
           <p className="raw-text-preview">{loadedNote.content}</p>
         </article>
+      ) : null}
+
+      {notePendingDelete ? (
+        <div className="ui-modal-backdrop" role="presentation">
+          <section
+            aria-labelledby="delete-note-title"
+            aria-modal="true"
+            className="ui-modal-card"
+            role="dialog"
+          >
+            <div className="ui-modal-header">
+              <div>
+                <span className="panel-kicker">Confirm delete</span>
+                <h3 id="delete-note-title">Delete saved note?</h3>
+              </div>
+              <button
+                aria-label="Close delete note dialog"
+                className="ui-modal-close"
+                type="button"
+                onClick={() => setNotePendingDelete(null)}
+              >
+                X
+              </button>
+            </div>
+            <p>
+              This removes "{notePendingDelete.title ?? "Untitled note"}" from
+              notes history. The source document and other study tools stay
+              intact.
+            </p>
+            <div className="button-row compact-button-row">
+              <button
+                className="button secondary"
+                type="button"
+                onClick={() => setNotePendingDelete(null)}
+                disabled={deletingNoteId === notePendingDelete.id}
+              >
+                Cancel
+              </button>
+              <button
+                className="button"
+                type="button"
+                onClick={() => deleteSavedNote(notePendingDelete)}
+                disabled={deletingNoteId === notePendingDelete.id}
+              >
+                {deletingNoteId === notePendingDelete.id ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </section>
+        </div>
       ) : null}
     </section>
   );

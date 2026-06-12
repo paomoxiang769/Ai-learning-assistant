@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { AppSidebar } from "@/components/app-sidebar";
+import { AppTopbar } from "@/components/app-topbar";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,20 +17,11 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <div className="app-shell">
-          <header className="top-nav">
-            <nav className="top-nav-inner" aria-label="Main navigation">
-              <Link className="brand" href="/">
-                AI Study Assistant
-              </Link>
-              <div className="nav-links">
-                <Link href="/dashboard">Dashboard</Link>
-                <Link href="/review">Review Center</Link>
-                <Link href="/documents">Documents</Link>
-                <Link href="/chat">Knowledge Base</Link>
-              </div>
-            </nav>
-          </header>
-          {children}
+          <AppSidebar />
+          <div className="app-main">
+            <AppTopbar />
+            <div className="app-content">{children}</div>
+          </div>
         </div>
       </body>
     </html>

@@ -14,11 +14,19 @@ type StudyReviewResponse = {
   signals: StudyReviewSignals;
 };
 
+type AiReviewCardProps = {
+  hasStudyActivity?: boolean;
+  mostStudiedDocumentTitle?: string;
+};
+
 function getErrorMessage(value: unknown) {
   return value instanceof Error ? value.message : "Unable to generate review advice.";
 }
 
-export function AiReviewCard() {
+export function AiReviewCard({
+  hasStudyActivity = false,
+  mostStudiedDocumentTitle,
+}: AiReviewCardProps) {
   const [review, setReview] = useState<StudyReviewResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -54,10 +62,23 @@ export function AiReviewCard() {
     }
   }
 
+  const reviewTarget =
+    review?.signals.mostStudiedDocumentTitle ??
+    mostStudiedDocumentTitle ??
+    "your latest study activity";
+  const guidanceCopy = hasStudyActivity
+    ? "Use recent chats, quizzes, and notes to decide what deserves attention next."
+    : "Create a review once you have chats, quizzes, or notes. The assistant will turn activity into a next step.";
+
   return (
     <article className="card ai-review-card">
-      <div>
-        <h2>AI Review</h2>
+      <div className="ai-review-heading">
+        <div>
+          <p className="eyebrow">AI Review</p>
+          <h2>What should you review next?</h2>
+          <p>{guidanceCopy}</p>
+        </div>
+        <span className="ai-review-badge">Core</span>
       </div>
 
       <div className="button-row compact-button-row">
@@ -75,17 +96,34 @@ export function AiReviewCard() {
 
       {review ? (
         <div className="ai-review-result">
-          <pre className="review-advice">{review.advice}</pre>
+          <div className="review-insight-grid">
+            <section>
+              <span className="panel-kicker">What to review next</span>
+              <h3>{reviewTarget}</h3>
+            </section>
+            <section>
+              <span className="panel-kicker">Why</span>
+              <p>
+                Based on {review.signals.recentChatsCount} chats,{" "}
+                {review.signals.recentQuizzesCount} quizzes, and{" "}
+                {review.signals.recentNotesCount} notes.
+              </p>
+            </section>
+          </div>
+          <section className="review-action-panel">
+            <span className="panel-kicker">Suggested action</span>
+            <pre className="review-advice">{review.advice}</pre>
+          </section>
+        </div>
+      ) : (
+        <div className="ai-review-empty">
+          <span className="panel-kicker">Suggested flow</span>
           <p>
-            Signals: {review.signals.recentChatsCount} chats,{" "}
-            {review.signals.recentQuizzesCount} quizzes,{" "}
-            {review.signals.recentNotesCount} notes
-            {review.signals.mostStudiedDocumentTitle
-              ? `, most studied: ${review.signals.mostStudiedDocumentTitle}`
-              : ""}
+            Generate a review, scan the recommended focus, then continue from
+            the document or quiz that needs the most attention.
           </p>
         </div>
-      ) : null}
+      )}
     </article>
   );
 }

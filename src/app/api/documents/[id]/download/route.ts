@@ -33,7 +33,7 @@ export async function GET(request: NextRequest, context: DownloadRouteContext) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
   const { data: document, error: documentError } = await supabase

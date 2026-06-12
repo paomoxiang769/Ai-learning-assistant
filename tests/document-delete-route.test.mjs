@@ -2,6 +2,42 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createDocumentDeleteRoute } from "../src/lib/document-delete-route.ts";
 
+test("document delete route returns 401 when the user is not authenticated", async () => {
+  const { POST } = createDocumentDeleteRoute({
+    createClient: async () => ({
+      auth: {
+        async getUser() {
+          return {
+            data: {
+              user: null,
+            },
+          };
+        },
+      },
+      storage: {
+        from() {
+          throw new Error("storage should not be used when unauthenticated");
+        },
+      },
+      from() {
+        throw new Error("database should not be queried when unauthenticated");
+      },
+    }),
+  });
+
+  const response = await POST(
+    new Request("http://localhost/api/documents/document-1/delete", {
+      method: "POST",
+    }),
+    {
+      params: Promise.resolve({ id: "document-1" }),
+    },
+  );
+
+  assert.equal(response.status, 401);
+  assert.deepEqual(await response.json(), { error: "Unauthorized." });
+});
+
 test("document delete route skips storage removal for URL file paths and deletes the document record", async () => {
   const operations = [];
   let deleteEqCount = 0;

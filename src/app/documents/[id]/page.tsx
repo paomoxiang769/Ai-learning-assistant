@@ -4,6 +4,7 @@ import { normalizeDocumentChatMessages } from "@/lib/document-chat";
 import { formatRawTextPreview } from "@/lib/raw-text-preview";
 import { createClient } from "@/lib/supabase/server";
 import { AskDocumentForm } from "./ask-document-form";
+import { DeleteDocumentForm } from "../delete-document-form";
 import { StudyNotesPanel } from "./study-notes-panel";
 import { StudyQuizPanel } from "./study-quiz-panel";
 
@@ -112,17 +113,28 @@ export default async function DocumentDetailPage({
     userDocument.processing_status === "completed" && rawTextLength > 0;
 
   return (
-    <main className="page">
-      <section className="page-header">
-        <p className="eyebrow">Document detail</p>
-        <h1>{userDocument.file_name}</h1>
-        <p>Review the uploaded file details or manage this document.</p>
+    <main className="page document-workspace-page">
+      <section className="workspace-hero document-workspace-hero" aria-label="Document overview">
+        <div>
+          <p className="eyebrow">Document detail</p>
+          <h1>{userDocument.file_name}</h1>
+          <p>Review the uploaded file details or manage this document.</p>
+        </div>
+        <aside className="workspace-hero-card">
+          <span className="panel-kicker">Processing status</span>
+          <strong>{userDocument.processing_status}</strong>
+          <p>
+            {canAskDocument
+              ? "Ready for grounded chat, quiz generation, and notes."
+              : "Learning tools unlock after processing completes."}
+          </p>
+        </aside>
       </section>
 
       {query.error ? <p className="form-message error">{query.error}</p> : null}
       {query.warning ? <p className="form-message warning">{query.warning}</p> : null}
 
-      <section className="grid grid-3" aria-label="Document details">
+      <section className="grid document-detail-meta document-meta-strip" aria-label="Document details">
         <article className="card">
           <h2>File name</h2>
           <p>{userDocument.file_name}</p>
@@ -146,29 +158,108 @@ export default async function DocumentDetailPage({
       </section>
 
       <section
-        className="list-section parsed-text-section"
-        aria-label="AI summary"
+        className="document-reader-grid paper-sync-shell"
+        aria-label="Document reading workspace"
       >
-        <div className="section-heading">
-          <h2>AI summary</h2>
-          <p>Generated from parsed text</p>
-        </div>
-        <article className="card">
-          <p className="raw-text-preview">{summaryText}</p>
-        </article>
-      </section>
+        <aside className="paper-sync-outline" aria-label="Document outline">
+          <span className="panel-kicker">Current mounted document</span>
+          <div className="paper-sync-mounted-card">
+            <strong>{userDocument.file_name}</strong>
+            <p>
+              {userDocument.file_type} - {rawTextLength} chars
+            </p>
+          </div>
+          <div className="paper-sync-index">
+            <span>Document knowledge index</span>
+            <a href="#document-summary-section">AI summary</a>
+            <a href="#document-preview-section">Raw text preview</a>
+            <a href="#document-chat-section">Grounded chat</a>
+            <a href="#quiz-section">Quiz arena</a>
+            <a href="#notes-section">Study notes</a>
+          </div>
+        </aside>
 
-      <section
-        className="list-section parsed-text-section"
-        aria-label="Parsed text preview"
-      >
-        <div className="section-heading">
-          <h2>Raw text preview</h2>
-          <p>First 500 characters</p>
+        <div className="document-reader-main">
+          <header className="paper-sync-header">
+            <div>
+              <span className="panel-kicker">Paper Sync</span>
+              <h2>AI interactive reader</h2>
+              <p>
+                Summary, source preview, and study tools stay aligned to this
+                document.
+              </p>
+            </div>
+            <div className="paper-sync-status-grid" aria-label="Reader status">
+              <span>{userDocument.file_type}</span>
+              <span>{rawTextLength} chars</span>
+              <strong>{canAskDocument ? "Ready" : "Processing"}</strong>
+            </div>
+          </header>
+
+          <section
+            className="list-section"
+            aria-label="AI summary"
+            id="document-summary-section"
+          >
+            <div className="section-heading">
+              <div>
+                <h2>AI summary</h2>
+                <p>Generated from parsed text</p>
+              </div>
+            </div>
+            <article className="card document-paper-card">
+              <p className="raw-text-preview">{summaryText}</p>
+            </article>
+          </section>
+
+          <section
+            className="list-section"
+            aria-label="Parsed text preview"
+            id="document-preview-section"
+          >
+            <div className="section-heading">
+              <div>
+                <h2>Raw text preview</h2>
+                <p>First 500 characters</p>
+              </div>
+            </div>
+            <article className="card document-paper-card">
+              <p className="raw-text-preview">{rawTextPreview}</p>
+            </article>
+          </section>
         </div>
-        <article className="card">
-          <p className="raw-text-preview">{rawTextPreview}</p>
-        </article>
+
+        <aside className="document-reader-side paper-sync-extract-panel">
+          <span className="panel-kicker">AI companion alignment</span>
+          <h2>Study from this document</h2>
+          <p>
+            Use grounded chat first, then generate a quiz or save notes from the
+            same source material.
+          </p>
+          <div className="paper-sync-focus-card" aria-label="AI extraction status">
+            <span>AI extraction</span>
+            <strong>{canAskDocument ? "Source aligned" : "Waiting for text"}</strong>
+            <p>
+              {canAskDocument
+                ? "Grounded chat, quiz, and notes can now use this document."
+                : "Processing must finish before study tools unlock."}
+            </p>
+          </div>
+          <div className="activity-list">
+            <div className="activity-row">
+              <span>RAG chat</span>
+              <strong>{canAskDocument ? "Ready" : "Locked"}</strong>
+            </div>
+            <div className="activity-row">
+              <span>Quiz</span>
+              <strong>{canAskDocument ? "Ready" : "Locked"}</strong>
+            </div>
+            <div className="activity-row">
+              <span>Notes</span>
+              <strong>{canAskDocument ? "Ready" : "Locked"}</strong>
+            </div>
+          </div>
+        </aside>
       </section>
 
       <AskDocumentForm
@@ -189,18 +280,17 @@ export default async function DocumentDetailPage({
         initialNoteId={query.noteId}
       />
 
-      <div className="button-row">
+      <div className="button-row document-action-row">
         <Link className="button secondary" href="/documents">
           Back to Documents
         </Link>
         <Link className="button" href={`/api/documents/${userDocument.id}/download`}>
           Download
         </Link>
-        <form action={`/api/documents/${userDocument.id}/delete`} method="post">
-          <button className="button secondary" type="submit">
-            Delete
-          </button>
-        </form>
+        <DeleteDocumentForm
+          documentId={userDocument.id}
+          fileName={userDocument.file_name}
+        />
       </div>
     </main>
   );

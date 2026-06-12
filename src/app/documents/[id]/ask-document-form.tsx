@@ -107,13 +107,20 @@ export function AskDocumentForm({
   });
 
   return (
-    <section className="list-section parsed-text-section" aria-label="Ask this document">
+    <section
+      className="list-section parsed-text-section document-tool-panel"
+      aria-label="Ask this document"
+      id="document-chat-section"
+    >
       <div className="section-heading">
-        <h2>Ask this document</h2>
-        <p>Retrieve grounded answers from the stored chunks</p>
+        <div>
+          <span className="panel-kicker">Grounded chat</span>
+          <h2>Ask this document</h2>
+          <p>Retrieve grounded answers from the stored chunks</p>
+        </div>
       </div>
 
-      <form className="ask-document-form" onSubmit={handleSubmit}>
+      <form className="ask-document-form document-tool-form" onSubmit={handleSubmit}>
         <label className="form-field" htmlFor="document-question">
           <span>Your question</span>
           <textarea

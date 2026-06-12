@@ -1,5 +1,20 @@
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  getAuthRedirectPath,
+  isProtectedApiPath,
+} from "@/lib/auth-protection";
 import { updateSession } from "@/lib/supabase/middleware";
+
+function copyResponseCookies(
+  source: NextResponse,
+  target: NextResponse,
+): NextResponse {
+  source.cookies.getAll().forEach((cookie) => {
+    target.cookies.set(cookie);
+  });
+
+  return target;
+}
 
 export async function middleware(request: NextRequest) {
   const isPagePost =
@@ -16,23 +31,23 @@ export async function middleware(request: NextRequest) {
   }
 
   const { response, user } = await updateSession(request);
+  const pathname = request.nextUrl.pathname;
+  const isAuthenticated = Boolean(user);
 
-  const isProtectedRoute =
-    request.nextUrl.pathname.startsWith("/dashboard") ||
-    request.nextUrl.pathname.startsWith("/documents") ||
-    request.nextUrl.pathname.startsWith("/review");
+  if (isProtectedApiPath(pathname) && !isAuthenticated) {
+    return copyResponseCookies(
+      response,
+      NextResponse.json({ error: "Unauthorized." }, { status: 401 }),
+    );
+  }
 
-  if (isProtectedRoute && !user) {
+  const authRedirectPath = getAuthRedirectPath(pathname, isAuthenticated);
+
+  if (authRedirectPath) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/login";
+    redirectUrl.pathname = authRedirectPath;
 
-    const redirectResponse = NextResponse.redirect(redirectUrl);
-
-    response.cookies.getAll().forEach((cookie) => {
-      redirectResponse.cookies.set(cookie);
-    });
-
-    return redirectResponse;
+    return copyResponseCookies(response, NextResponse.redirect(redirectUrl));
   }
 
   return response;

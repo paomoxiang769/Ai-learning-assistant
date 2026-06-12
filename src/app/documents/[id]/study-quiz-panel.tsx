@@ -69,6 +69,18 @@ export function StudyQuizPanel({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [deletingQuizId, setDeletingQuizId] = useState<string | null>(null);
+  const [quizPendingDelete, setQuizPendingDelete] =
+    useState<SavedStudyQuiz | null>(null);
+  const visibleQuestionKeys = quiz.map((question, index) =>
+    getQuestionKey(question, index),
+  );
+  const revealedVisibleAnswerCount = visibleQuestionKeys.filter((questionKey) =>
+    revealedAnswers.includes(questionKey),
+  ).length;
+  const remainingVisibleAnswerCount = Math.max(
+    quiz.length - revealedVisibleAnswerCount,
+    0,
+  );
 
   async function loadQuizHistory() {
     setHistoryError("");
@@ -293,10 +305,6 @@ export function StudyQuizPanel({
   }
 
   async function deleteSavedQuiz(savedQuiz: SavedStudyQuiz) {
-    if (!window.confirm("Delete this saved quiz?")) {
-      return;
-    }
-
     setHistoryError("");
     setDeletingQuizId(savedQuiz.id);
 
@@ -330,6 +338,7 @@ export function StudyQuizPanel({
         setLoadedQuizId(null);
         setRevealedAnswers([]);
       }
+      setQuizPendingDelete(null);
     } catch (requestError) {
       setHistoryError(
         requestError instanceof Error
@@ -344,17 +353,20 @@ export function StudyQuizPanel({
   return (
     <section
       ref={quizSectionRef}
-      className="list-section parsed-text-section"
+      className="list-section parsed-text-section document-tool-panel"
       aria-label="Generate quiz"
       id="quiz-section"
       style={{ scrollMarginTop: "5rem" }}
     >
       <div className="section-heading">
-        <h2>Generate Quiz</h2>
-        <p>Create 5 practice questions from this document</p>
+        <div>
+          <span className="panel-kicker">Practice</span>
+          <h2>Generate Quiz</h2>
+          <p>Create 5 practice questions from this document</p>
+        </div>
       </div>
 
-      <article className="study-quiz-form">
+      <article className="study-quiz-form document-tool-form">
         <p className="form-message">
           Generates a temporary quiz from the current document text. Questions are
           saved to quiz history for review.
@@ -392,7 +404,7 @@ export function StudyQuizPanel({
         {savedQuizzes.length > 0 ? (
           <div className="list">
             {savedQuizzes.map((savedQuiz) => (
-              <article className="quiz-history-item" key={savedQuiz.id}>
+              <article className="quiz-history-item tactile-history-item" key={savedQuiz.id}>
                 <div>
                   <h4>{savedQuiz.title ?? "Saved quiz"}</h4>
                   <p>
@@ -412,7 +424,7 @@ export function StudyQuizPanel({
                   <button
                     className="button secondary"
                     type="button"
-                    onClick={() => deleteSavedQuiz(savedQuiz)}
+                    onClick={() => setQuizPendingDelete(savedQuiz)}
                     disabled={deletingQuizId === savedQuiz.id}
                   >
                     {deletingQuizId === savedQuiz.id ? "Deleting..." : "Delete"}
@@ -429,51 +441,173 @@ export function StudyQuizPanel({
       </div>
 
       {quiz.length > 0 ? (
-        <div className="list" aria-label="Generated quiz questions">
-          {quiz.map((question, index) => {
-            const questionKey = getQuestionKey(question, index);
-            const isAnswerVisible = revealedAnswers.includes(questionKey);
+        <section className="tactile-quiz-arena" aria-label="Generated quiz questions">
+          <aside className="tactile-quiz-rail" aria-label="Quiz review status">
+            <span className="panel-kicker">Tactile arena</span>
+            <h3>{quiz.length} question cards</h3>
+            <p>
+              Reveal each answer like turning over a study card, then return to
+              quiz history when you are ready to review it again.
+            </p>
+            <div className="tactile-quiz-meter">
+              <span>Answers revealed</span>
+              <strong>
+                {revealedVisibleAnswerCount}/{quiz.length}
+              </strong>
+            </div>
+          </aside>
 
-            return (
-              <article className="card quiz-question-card" key={questionKey}>
-                <div className="quiz-question-meta">
-                  <h3>Question {index + 1}</h3>
-                  <span className="quiz-question-type">{question.type}</span>
-                </div>
+          <div className="tactile-card-stack">
+            {quiz.map((question, index) => {
+              const questionKey = getQuestionKey(question, index);
+              const isAnswerVisible = revealedAnswers.includes(questionKey);
 
-                <p className="chat-message-text">{question.question}</p>
+              return (
+                <article
+                  className={`card quiz-question-card tactile-question-card tactile-flip-card${
+                    isAnswerVisible ? " is-revealed" : ""
+                  }`}
+                  key={questionKey}
+                >
+                  <div className="tactile-card-rotor">
+                    <div
+                      aria-hidden={isAnswerVisible}
+                      className="tactile-card-face tactile-card-front"
+                    >
+                      <div className="quiz-question-meta">
+                        <h3>Question {index + 1}</h3>
+                        <span className="quiz-question-type">{question.type}</span>
+                      </div>
 
-                {question.options?.length ? (
-                  <ol className="quiz-options">
-                    {question.options.map((option) => (
-                      <li key={option}>{option}</li>
-                    ))}
-                  </ol>
-                ) : null}
+                      <p className="chat-message-text">{question.question}</p>
 
-                <div className="button-row">
-                  <button
-                    className="button secondary"
-                    type="button"
-                    onClick={() => toggleAnswer(questionKey)}
-                  >
-                    {isAnswerVisible ? "Hide answer" : "Show answer"}
-                  </button>
-                </div>
+                      {question.options?.length ? (
+                        <ol className="quiz-options">
+                          {question.options.map((option) => (
+                            <li key={option}>{option}</li>
+                          ))}
+                        </ol>
+                      ) : null}
 
-                {isAnswerVisible ? (
-                  <div className="quiz-answer-panel">
-                    <p>
-                      <strong>Answer:</strong> {question.answer}
-                    </p>
-                    <p>
-                      <strong>Explanation:</strong> {question.explanation}
-                    </p>
+                      <div className="tactile-card-footer">
+                        <span>Front question</span>
+                        <button
+                          aria-pressed={isAnswerVisible}
+                          className="button secondary"
+                          type="button"
+                          onClick={() => toggleAnswer(questionKey)}
+                        >
+                          Show answer
+                        </button>
+                      </div>
+                    </div>
+
+                    <div
+                      aria-hidden={!isAnswerVisible}
+                      className="tactile-card-face tactile-card-back"
+                    >
+                      <div className="quiz-question-meta">
+                        <h3>Answer {index + 1}</h3>
+                        <span className="quiz-question-type">review</span>
+                      </div>
+
+                      <div className="quiz-answer-panel">
+                        <p>
+                          <strong>Answer:</strong> {question.answer}
+                        </p>
+                        <p>
+                          <strong>Explanation:</strong> {question.explanation}
+                        </p>
+                      </div>
+
+                      <div className="tactile-card-footer">
+                        <span>Back answer</span>
+                        <button
+                          aria-pressed={isAnswerVisible}
+                          className="button secondary"
+                          type="button"
+                          onClick={() => toggleAnswer(questionKey)}
+                        >
+                          Hide answer
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                ) : null}
-              </article>
-            );
-          })}
+                </article>
+              );
+            })}
+          </div>
+
+          <aside className="tactile-quiz-feedback" aria-label="AI quiz feedback">
+            <span className="panel-kicker">AI feedback</span>
+            <h3>Review pacing</h3>
+            <p>
+              Reveal answers one card at a time, then return to saved history
+              for another pass when the set is complete.
+            </p>
+            <div className="activity-list">
+              <div className="activity-row">
+                <span>Revealed answers</span>
+                <strong>{revealedVisibleAnswerCount}</strong>
+              </div>
+              <div className="activity-row">
+                <span>Remaining cards</span>
+                <strong>{remainingVisibleAnswerCount}</strong>
+              </div>
+              <div className="activity-row">
+                <span>Saved set</span>
+                <strong>{loadedQuizId ? "Loaded" : "Fresh"}</strong>
+              </div>
+            </div>
+          </aside>
+        </section>
+      ) : null}
+
+      {quizPendingDelete ? (
+        <div className="ui-modal-backdrop" role="presentation">
+          <section
+            aria-labelledby="delete-quiz-title"
+            aria-modal="true"
+            className="ui-modal-card"
+            role="dialog"
+          >
+            <div className="ui-modal-header">
+              <div>
+                <span className="panel-kicker">Confirm delete</span>
+                <h3 id="delete-quiz-title">Delete saved quiz?</h3>
+              </div>
+              <button
+                aria-label="Close delete quiz dialog"
+                className="ui-modal-close"
+                type="button"
+                onClick={() => setQuizPendingDelete(null)}
+              >
+                X
+              </button>
+            </div>
+            <p>
+              This removes "{quizPendingDelete.title ?? "Saved quiz"}" from quiz
+              history. The source document and generated study data stay intact.
+            </p>
+            <div className="button-row compact-button-row">
+              <button
+                className="button secondary"
+                type="button"
+                onClick={() => setQuizPendingDelete(null)}
+                disabled={deletingQuizId === quizPendingDelete.id}
+              >
+                Cancel
+              </button>
+              <button
+                className="button"
+                type="button"
+                onClick={() => deleteSavedQuiz(quizPendingDelete)}
+                disabled={deletingQuizId === quizPendingDelete.id}
+              >
+                {deletingQuizId === quizPendingDelete.id ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </section>
         </div>
       ) : null}
     </section>
