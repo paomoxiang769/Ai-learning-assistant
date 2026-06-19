@@ -19,3 +19,14 @@ test("study quiz arena renders an AI review feedback panel", () => {
   assert.match(quizPanelSource, /Review pacing/);
   assert.match(quizPanelSource, /Remaining cards/);
 });
+
+test("study quiz panel includes saved quiz search", () => {
+  assert.match(quizPanelSource, /quizSearchQuery/);
+  assert.match(quizPanelSource, /Search questions and explanations/);
+});
+
+test("study quiz deep links scroll to loaded quiz content", () => {
+  assert.match(quizPanelSource, /quizContentRef/);
+  assert.match(quizPanelSource, /ref=\{quizContentRef\}/);
+  assert.match(quizPanelSource, /quizContentRef\.current\?\.scrollIntoView/);
+});

@@ -8,14 +8,14 @@ const globalsCss = await readFile(
 );
 
 test("global styles expose the target UI design tokens", () => {
-  assert.match(globalsCss, /--canvas:\s*#f1f5f9;/);
-  assert.match(globalsCss, /--workspace:\s*#f8fafc;/);
-  assert.match(globalsCss, /--ink:\s*#0f172a;/);
-  assert.match(globalsCss, /--brand:\s*#4f46e5;/);
-  assert.match(globalsCss, /--brand-soft:\s*#eef2ff;/);
+  assert.match(globalsCss, /--canvas:\s*#f7f7f7;/);
+  assert.match(globalsCss, /--workspace:\s*#ffffff;/);
+  assert.match(globalsCss, /--ink:\s*#111111;/);
+  assert.match(globalsCss, /--brand:\s*#111111;/);
+  assert.match(globalsCss, /--brand-soft:\s*#eeeeee;/);
   assert.match(globalsCss, /--panel-radius:\s*8px;/);
   assert.match(globalsCss, /--control-radius:\s*8px;/);
-  assert.match(globalsCss, /--shadow-crisp:\s*0 1px 3px rgba\(15,\s*23,\s*42,\s*0\.06\);/);
+  assert.match(globalsCss, /--shadow-crisp:\s*0 1px 2px rgba\(0,\s*0,\s*0,\s*0\.04\);/);
 });
 
 test("common cards and controls use compact SaaS styling", () => {

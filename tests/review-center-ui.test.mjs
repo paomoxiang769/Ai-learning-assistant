@@ -6,12 +6,56 @@ const reviewCenterSource = await readFile(
   new URL("../src/app/review/page.tsx", import.meta.url),
   "utf8",
 );
+const reviewCenterSearchSource = await readFile(
+  new URL("../src/app/review/review-center-search.tsx", import.meta.url),
+  "utf8",
+);
+const globalsSource = await readFile(
+  new URL("../src/app/globals.css", import.meta.url),
+  "utf8",
+);
 
 test("review center renders a history drawer workspace", () => {
   assert.match(reviewCenterSource, /review-drawer-shell/);
   assert.match(reviewCenterSource, /review-signal-rail/);
-  assert.match(reviewCenterSource, /review-history-drawer/);
-  assert.match(reviewCenterSource, /review-lane-marker/);
+  assert.match(reviewCenterSource, /ReviewCenterSearch/);
+  assert.match(reviewCenterSearchSource, /review-main-panel/);
+  assert.match(reviewCenterSearchSource, /review-history-drawer/);
+  assert.match(reviewCenterSearchSource, /review-lane-marker/);
+  assert.match(reviewCenterSearchSource, /Search recent chats, notes, quizzes, flashcards/);
+});
+
+test("review center renders recent flashcards", () => {
+  assert.match(reviewCenterSource, /recentFlashcards/);
+  assert.match(reviewCenterSearchSource, /Recent Flashcards/);
+  assert.match(reviewCenterSearchSource, /flashcards/);
+});
+
+test("review center keeps search and result lanes in the main content column", () => {
+  assert.match(globalsSource, /\.review-main-panel\s*\{/);
+  assert.match(globalsSource, /grid-column:\s*2;/);
+  assert.match(globalsSource, /min-width:\s*0;/);
+  assert.match(globalsSource, /\.review-workspace-grid\s*\{/);
+  assert.match(globalsSource, /repeat\(auto-fit,\s*minmax\(min\(100%,\s*18rem\),\s*1fr\)\)/);
+  assert.match(globalsSource, /align-items:\s*start;/);
+  assert.match(globalsSource, /\.review-history-drawer\s*\{[^}]*align-content:\s*start;/s);
+  assert.match(globalsSource, /\.review-history-drawer \.section-heading\s*\{[^}]*align-items:\s*flex-start;/s);
+});
+
+test("review center can hide each history lane", () => {
+  assert.match(reviewCenterSearchSource, /visibleReviewSections/);
+  assert.doesNotMatch(reviewCenterSearchSource, /review-lane-toggles/);
+  assert.match(reviewCenterSearchSource, /aria-pressed=\{visibleReviewSections\.chats\}/);
+  assert.match(reviewCenterSearchSource, /aria-pressed=\{visibleReviewSections\.quizzes\}/);
+  assert.match(reviewCenterSearchSource, /aria-pressed=\{visibleReviewSections\.notes\}/);
+  assert.match(reviewCenterSearchSource, /aria-pressed=\{visibleReviewSections\.flashcards\}/);
+  assert.match(reviewCenterSearchSource, /Show chats|Hide chats/);
+  assert.match(reviewCenterSearchSource, /Show quizzes|Hide quizzes/);
+  assert.match(reviewCenterSearchSource, /Show notes|Hide notes/);
+  assert.match(reviewCenterSearchSource, /Show flashcards|Hide flashcards/);
+  assert.match(reviewCenterSearchSource, /review-lane-body/);
+  assert.match(globalsSource, /\.review-lane-header-action\s*\{/);
+  assert.match(globalsSource, /\.review-lane-toggle\[aria-pressed="true"\]/);
 });
 
 test("review center mirrors the target AI review command rail", () => {

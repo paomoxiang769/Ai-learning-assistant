@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { filterQuizzesForSearch } from "@/lib/search";
 import {
   normalizeSavedStudyQuizListPayload,
   normalizeStudyQuizPayload,
@@ -52,7 +53,7 @@ export function StudyQuizPanel({
   canGenerate,
   initialQuizId,
 }: StudyQuizPanelProps) {
-  const quizSectionRef = useRef<HTMLElement | null>(null);
+  const quizContentRef = useRef<HTMLElement | null>(null);
   const [quiz, setQuiz] = useState<StudyQuizQuestion[]>([]);
   const [loadedQuizId, setLoadedQuizId] = useState<string | null>(null);
   const [savedQuizzes, setSavedQuizzes] = useState<SavedStudyQuiz[]>([]);
@@ -63,6 +64,7 @@ export function StudyQuizPanel({
     null,
   );
   const [hasLoadedQuizHistory, setHasLoadedQuizHistory] = useState(false);
+  const [quizSearchQuery, setQuizSearchQuery] = useState("");
   const [revealedAnswers, setRevealedAnswers] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [historyError, setHistoryError] = useState("");
@@ -71,6 +73,10 @@ export function StudyQuizPanel({
   const [deletingQuizId, setDeletingQuizId] = useState<string | null>(null);
   const [quizPendingDelete, setQuizPendingDelete] =
     useState<SavedStudyQuiz | null>(null);
+  const visibleSavedQuizzes = filterQuizzesForSearch(
+    savedQuizzes,
+    quizSearchQuery,
+  );
   const visibleQuestionKeys = quiz.map((question, index) =>
     getQuestionKey(question, index),
   );
@@ -216,7 +222,7 @@ export function StudyQuizPanel({
     let timeoutId: number | undefined;
     const animationFrameId = window.requestAnimationFrame(() => {
       timeoutId = window.setTimeout(() => {
-        quizSectionRef.current?.scrollIntoView({
+        quizContentRef.current?.scrollIntoView({
           behavior: "smooth",
           block: "start",
         });
@@ -352,7 +358,6 @@ export function StudyQuizPanel({
 
   return (
     <section
-      ref={quizSectionRef}
       className="list-section parsed-text-section document-tool-panel"
       aria-label="Generate quiz"
       id="quiz-section"
@@ -396,14 +401,29 @@ export function StudyQuizPanel({
       <div className="quiz-history" aria-label="Quiz history">
         <div className="section-heading">
           <h3>Quiz History</h3>
-          <p>{isLoadingHistory ? "Loading..." : `${savedQuizzes.length} saved`}</p>
+          <p>
+            {isLoadingHistory
+              ? "Loading..."
+              : `${visibleSavedQuizzes.length}/${savedQuizzes.length} shown`}
+          </p>
         </div>
+
+        <label className="form-field search-field" htmlFor="quiz-search">
+          Search quizzes
+          <input
+            id="quiz-search"
+            type="search"
+            value={quizSearchQuery}
+            onChange={(event) => setQuizSearchQuery(event.target.value)}
+            placeholder="Search questions and explanations"
+          />
+        </label>
 
         {historyError ? <p className="form-message error">{historyError}</p> : null}
 
-        {savedQuizzes.length > 0 ? (
+        {visibleSavedQuizzes.length > 0 ? (
           <div className="list">
-            {savedQuizzes.map((savedQuiz) => (
+            {visibleSavedQuizzes.map((savedQuiz) => (
               <article className="quiz-history-item tactile-history-item" key={savedQuiz.id}>
                 <div>
                   <h4>{savedQuiz.title ?? "Saved quiz"}</h4>
@@ -433,15 +453,24 @@ export function StudyQuizPanel({
               </article>
             ))}
           </div>
-        ) : !isLoadingHistory && !historyError ? (
+        ) : !isLoadingHistory && !historyError && savedQuizzes.length === 0 ? (
           <article className="card chat-empty-state">
             <p>No saved quizzes yet.</p>
+          </article>
+        ) : !isLoadingHistory && !historyError ? (
+          <article className="card chat-empty-state">
+            <p>No matching quizzes.</p>
           </article>
         ) : null}
       </div>
 
       {quiz.length > 0 ? (
-        <section className="tactile-quiz-arena" aria-label="Generated quiz questions">
+        <section
+          ref={quizContentRef}
+          className="tactile-quiz-arena"
+          aria-label="Generated quiz questions"
+          style={{ scrollMarginTop: "5rem" }}
+        >
           <aside className="tactile-quiz-rail" aria-label="Quiz review status">
             <span className="panel-kicker">Tactile arena</span>
             <h3>{quiz.length} question cards</h3>

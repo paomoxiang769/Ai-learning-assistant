@@ -7,18 +7,54 @@ const documentDetailSource = await readFile(
   "utf8",
 );
 
-test("document detail page renders the Paper Sync reader shell", () => {
-  assert.match(documentDetailSource, /paper-sync-shell/);
-  assert.match(documentDetailSource, /paper-sync-header/);
-  assert.match(documentDetailSource, /paper-sync-status-grid/);
-  assert.match(documentDetailSource, /paper-sync-extract-panel/);
+test("document detail page renders the workspace tab shell", () => {
+  assert.match(documentDetailSource, /DocumentWorkspaceTabs/);
+  assert.match(documentDetailSource, /initialTab/);
+  assert.match(documentDetailSource, /overviewContent/);
+  assert.match(documentDetailSource, /chatContent/);
+  assert.match(documentDetailSource, /quizContent/);
+  assert.match(documentDetailSource, /notesContent/);
+  assert.match(documentDetailSource, /flashcardsContent/);
+  assert.doesNotMatch(documentDetailSource, /paper-sync-shell/);
 });
 
-test("document detail page mirrors the target Paper Sync three-column layout", () => {
-  assert.match(documentDetailSource, /paper-sync-outline/);
-  assert.match(documentDetailSource, /Current mounted document/);
-  assert.match(documentDetailSource, /Document knowledge index/);
-  assert.match(documentDetailSource, /AI companion alignment/);
+test("document detail overview keeps summary, stats, and raw text collapsed", () => {
+  assert.match(documentDetailSource, /Document statistics/);
+  assert.match(documentDetailSource, /AI Summary/);
+  assert.match(documentDetailSource, /<details className="document-raw-text-disclosure">/);
+  assert.match(documentDetailSource, /<summary>Raw Text Preview<\/summary>/);
+});
+
+test("document detail page preserves quiz and note deep-link targets", () => {
+  assert.match(
+    documentDetailSource,
+    /const initialWorkspaceTab = query\.quizId\s+\? "quiz"\s+:\s+query\.noteId\s+\? "notes"\s+:\s+"overview";/,
+  );
+  assert.match(documentDetailSource, /initialQuizId=\{query\.quizId\}/);
+  assert.match(documentDetailSource, /initialNoteId=\{query\.noteId\}/);
+});
+
+test("document detail page wires the flashcards workspace tab", async () => {
+  const workspaceTabsSource = await readFile(
+    new URL("../src/app/documents/[id]/document-workspace-tabs.tsx", import.meta.url),
+    "utf8",
+  );
+  const flashcardsPanelSource = await readFile(
+    new URL("../src/app/documents/[id]/study-flashcards-panel.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(documentDetailSource, /StudyFlashcardsPanel/);
+  assert.match(workspaceTabsSource, /"flashcards"/);
+  assert.match(workspaceTabsSource, /Flashcards/);
+  assert.match(flashcardsPanelSource, /Generate Flashcards/);
+  assert.match(flashcardsPanelSource, /Flashcards History/);
+  assert.match(flashcardsPanelSource, /\/api\/study\/flashcards\/generate/);
+  assert.match(flashcardsPanelSource, /\/api\/study\/flashcards/);
+  assert.match(flashcardsPanelSource, /Flip Card/);
+  assert.match(flashcardsPanelSource, /Previous/);
+  assert.match(flashcardsPanelSource, /Next/);
+  assert.match(flashcardsPanelSource, /Delete/);
 });
 
 test("document detail page uses the shared delete confirmation UI", () => {

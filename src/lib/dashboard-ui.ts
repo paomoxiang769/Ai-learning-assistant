@@ -75,6 +75,20 @@ export function buildDashboardActivityFeed({
     });
   }
 
+  if (studyActivitySummary.flashcards > 0) {
+    feed.push({
+      id: "flashcard-summary",
+      label: "Generated flashcards",
+      title: `${studyActivitySummary.flashcards} ${pluralize(
+        studyActivitySummary.flashcards,
+        "flashcard",
+        "flashcards",
+      )} this week`,
+      meta: "Saved quick review cards",
+      href: "/review",
+    });
+  }
+
   for (const document of recentDocuments.slice(0, 2)) {
     feed.push({
       id: `document-${document.id}`,

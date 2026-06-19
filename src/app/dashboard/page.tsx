@@ -1,32 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AiReviewCard } from "./ai-review-card";
-import { loadDashboardOverview } from "@/lib/dashboard";
-import { buildDashboardActivityFeed } from "@/lib/dashboard-ui";
+import { DashboardGlobalSearch } from "./dashboard-global-search";
+import { StudyPlanCard } from "./study-plan-card";
+import { WeaknessDetectionCard } from "./weakness-detection-card";
+import { loadDashboardOverview, loadDashboardSearchData } from "@/lib/dashboard";
 import { createClient } from "@/lib/supabase/server";
-
-function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("en", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
-function getSynapseLevel(value: number) {
-  if (value >= 8) {
-    return "is-hot";
-  }
-
-  if (value >= 3) {
-    return "is-warm";
-  }
-
-  if (value > 0) {
-    return "is-active";
-  }
-
-  return "is-quiet";
-}
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -42,393 +21,223 @@ export default async function DashboardPage() {
     supabase,
     userId: user.id,
   });
-  const activityFeed = buildDashboardActivityFeed({
-    recentDocuments: overview.recentDocuments,
-    recentQuizzes: overview.recentQuizzes,
-    studyActivitySummary: overview.studyActivitySummary,
+  const searchData = await loadDashboardSearchData({
+    supabase,
+    userId: user.id,
   });
+  
   const weeklyActivityCount =
     overview.studyActivitySummary.chats +
     overview.studyActivitySummary.quizzes +
-    overview.studyActivitySummary.notes;
-  const learningStatus =
-    overview.processedDocuments > 0
-      ? "Ready for focused study"
-      : overview.totalDocuments > 0
-        ? "Preparing your materials"
-        : "Start your study base";
-  const nextFocus =
-    overview.mostStudiedDocument?.title ??
-    overview.recentDocuments[0]?.fileName ??
-    "Upload a document to begin";
-  const recentDocument = overview.recentDocuments[0] ?? null;
-  const recentQuiz = overview.recentQuizzes[0] ?? null;
-  const stats = [
-    {
-      label: "Documents",
-      value: overview.totalDocuments,
-      helper: "All uploaded files",
-    },
-    {
-      label: "Ready",
-      value: overview.processedDocuments,
-      helper: "Processed documents",
-    },
-    {
-      label: "Quizzes",
-      value: overview.totalSavedQuizzes,
-      helper: "Saved practice sets",
-    },
-    {
-      label: "Chats",
-      value: overview.totalChatMessages,
-      helper: "Study questions asked",
-    },
-    {
-      label: "Notes",
-      value: overview.totalNotes,
-      helper: "Saved observations",
-    },
-  ];
-  const synapseSignals = [
-    {
-      label: "Chats",
-      value: overview.studyActivitySummary.chats,
-    },
-    {
-      label: "Quizzes",
-      value: overview.studyActivitySummary.quizzes,
-    },
-    {
-      label: "Notes",
-      value: overview.studyActivitySummary.notes,
-    },
-    {
-      label: "Ready docs",
-      value: overview.processedDocuments,
-    },
-    {
-      label: "Saved sets",
-      value: overview.totalSavedQuizzes,
-    },
-    {
-      label: "Documents",
-      value: overview.totalDocuments,
-    },
-  ];
+    overview.studyActivitySummary.notes +
+    overview.studyActivitySummary.flashcards;
 
   return (
-    <main className="page dashboard-page">
-      <section className="dashboard-hero" aria-label="Learning overview">
-        <div className="dashboard-hero-copy">
-          <p className="eyebrow">Learning dashboard</p>
-          <h1>Your study workspace</h1>
-          <p>
-            Keep momentum across documents, review prompts, quizzes, and notes.
-            Signed in as {user.email}
-          </p>
-          <div className="dashboard-hero-actions">
-            {overview.mostStudiedDocument ? (
-              <Link className="button" href={overview.mostStudiedDocument.href}>
-                Resume focus
-              </Link>
-            ) : (
-              <Link className="button" href="/documents">
-                Add study material
-              </Link>
-            )}
-            <Link className="button secondary" href="/review">
-              Open review center
-            </Link>
+    <main className="dashboard-redesign-container">
+      {/* Header Section */}
+      <header className="dashboard-redesign-header">
+        <h1>Home</h1>
+        <div className="time-pill-selector">
+          <button className="time-pill active" type="button">24h</button>
+          <button className="time-pill" type="button">7d</button>
+          <button className="time-pill" type="button">30d</button>
+          <button className="time-pill" type="button">90d</button>
+        </div>
+      </header>
+
+      {/* Get Started Section */}
+      <section className="get-started-panel" aria-label="Get started panel">
+        <div className="get-started-steps-container">
+          <div className="get-started-header">
+            <h2>Get started</h2>
+            <button className="get-started-dismiss-btn" type="button">✕ Dismiss</button>
+          </div>
+          
+          <div className="get-started-step">
+            <span className="get-started-step-icon" aria-hidden="true">🔑</span>
+            <div className="get-started-step-copy">
+              <strong>1. Upload study documents</strong>
+              <p>Import PDFs, TXT, or markdown files to build your base.</p>
+            </div>
+          </div>
+
+          <div className="get-started-step">
+            <span className="get-started-step-icon" aria-hidden="true">📦</span>
+            <div className="get-started-step-copy">
+              <strong>2. Start study chat & quiz</strong>
+              <p>Interact with the AI to ask questions or practice loops.</p>
+            </div>
           </div>
         </div>
 
-        <aside className="dashboard-status-panel">
-          <span className="panel-kicker">Current status</span>
-          <h2>{learningStatus}</h2>
-          <p>{nextFocus}</p>
-          <div className="dashboard-status-grid" aria-label="Weekly status">
-            <div>
-              <strong>{weeklyActivityCount}</strong>
-              <span>actions this week</span>
+        <div className="get-started-gradient-panel">
+          <Link className="glass-card" href="/chat">
+            <div className="glass-card-title">
+              <span>Study Quickstart</span>
+              <span className="glass-card-arrow">↗</span>
             </div>
-            <div>
-              <strong>{overview.processedDocuments}</strong>
-              <span>ready documents</span>
+            <span className="glass-card-desc">Start chatting with your documents in minutes.</span>
+          </Link>
+
+          <Link className="glass-card" href="/review">
+            <div className="glass-card-title">
+              <span>Practice loop</span>
+              <span className="glass-card-arrow">↗</span>
             </div>
-          </div>
-        </aside>
+            <span className="glass-card-desc">Generate quizzes to test your knowledge.</span>
+          </Link>
+        </div>
       </section>
 
-      <section className="bento-command-center" aria-label="Bento study command center">
-        <div className="dashboard-command-copy">
-          <span className="panel-kicker">AI Daily Nexus</span>
-          <h2>Study command center</h2>
-          <p>
-            Jump into the next useful action from one dense workspace: source
-            reading, grounded chat, practice, or review.
-          </p>
+      {/* Stats Section */}
+      <section className="premium-stats-grid" aria-label="Study stats">
+        <div className="stats-col-1">
+          <Link className="stat-box" href="/documents">
+            <div className="stat-box-title">
+              <span>Total documents</span>
+              <span>&gt;</span>
+            </div>
+            <span className="stat-box-value">{overview.totalDocuments}</span>
+          </Link>
+          
+          <Link className="stat-box" href="/review">
+            <div className="stat-box-title">
+              <span>Saved quizzes</span>
+              <span>&gt;</span>
+            </div>
+            <span className="stat-box-value">{overview.totalSavedQuizzes}</span>
+          </Link>
+
+          <Link className="stat-box" href="/review">
+            <div className="stat-box-title">
+              <span>Total Flashcards</span>
+              <span>&gt;</span>
+            </div>
+            <span className="stat-box-value">{overview.totalFlashcards}</span>
+          </Link>
         </div>
 
-        <div className="dashboard-command-grid" aria-label="Study routes">
-          <Link className="dashboard-route-chip" href="/documents">
-            <span>01</span>
-            <strong>Source library</strong>
-            <small>{overview.totalDocuments} documents</small>
+        <div className="stats-col-2">
+          <div className="stat-box-tall">
+            <div className="stat-box-title">
+              <span>Total study actions</span>
+              <span>&gt;</span>
+            </div>
+            <span className="stat-box-value">{weeklyActivityCount}</span>
+            <span className="stat-box-subvalue">
+              Recent flashcards {overview.studyActivitySummary.flashcards}
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* Search Section */}
+      <DashboardGlobalSearch
+        searchData={searchData}
+        placeholder="Search documents, notes, quizzes..."
+      />
+
+      {/* Recommended Study Modes */}
+      <section aria-label="Recommended study modes">
+        <h2 className="section-label">Recommended study modes</h2>
+        <div className="recommended-modes-grid">
+          <Link className="mode-card" href="/chat">
+            <div className="mode-card-icon">💬</div>
+            <h3 className="mode-card-title">Document Chat</h3>
+            <p className="mode-card-desc">Chat with your AI study assistant about any document.</p>
           </Link>
-          <Link className="dashboard-route-chip" href="/chat">
-            <span>02</span>
-            <strong>Knowledge chat</strong>
-            <small>{overview.totalChatMessages} saved questions</small>
+
+          <Link className="mode-card" href="/chat">
+            <div className="mode-card-icon">📂</div>
+            <h3 className="mode-card-title">Knowledge Base</h3>
+            <p className="mode-card-desc">Query across all uploaded study materials.</p>
           </Link>
-          <Link className="dashboard-route-chip" href="/review">
-            <span>03</span>
-            <strong>Review center</strong>
-            <small>{weeklyActivityCount} weekly actions</small>
+
+          <Link className="mode-card" href="/review">
+            <div className="mode-card-icon">📝</div>
+            <h3 className="mode-card-title">Quiz Practice</h3>
+            <p className="mode-card-desc">Practice with custom multiple-choice quizzes.</p>
           </Link>
-          <Link
-            className="dashboard-route-chip"
-            href={recentQuiz?.href ?? "/documents"}
+
+          <Link className="mode-card" href="/review">
+            <div className="mode-card-icon">🧠</div>
+            <h3 className="mode-card-title">AI Review Center</h3>
+            <p className="mode-card-desc">Review core concepts and study feedback.</p>
+          </Link>
+
+          <Link className="mode-card" href="/documents">
+            <div className="mode-card-icon">📤</div>
+            <h3 className="mode-card-title">Upload Center</h3>
+            <p className="mode-card-desc">Import PDF, TXT or markdown files to get started.</p>
+          </Link>
+        </div>
+      </section>
+
+      {/* Tools Section */}
+      <section aria-label="Study tools">
+        <h2 className="section-label">Tools</h2>
+        <div className="recommended-modes-grid">
+          <Link className="mode-card" href="/documents">
+            <div className="mode-card-icon">🔍</div>
+            <h3 className="mode-card-title">Global Search</h3>
+            <p className="mode-card-desc">Search documents, notes, and quizzes.</p>
+          </Link>
+
+          <Link className="mode-card" href="/review">
+            <div className="mode-card-icon">⚠️</div>
+            <h3 className="mode-card-title">Weakness Detection</h3>
+            <p className="mode-card-desc">Find topics most likely to need another pass.</p>
+          </Link>
+
+          <div className="mode-card">
+            <div className="mode-card-icon">💓</div>
+            <h3 className="mode-card-title">Learning Pulse</h3>
+            <p className="mode-card-desc">View your study metrics and weekly actions.</p>
+          </div>
+
+          <div className="mode-card">
+            <div className="mode-card-icon">📡</div>
+            <h3 className="mode-card-title">Study Signal Map</h3>
+            <p className="mode-card-desc">View your active study signals.</p>
+          </div>
+
+          <div className="mode-card">
+            <div className="mode-card-icon">⚙️</div>
+            <h3 className="mode-card-title">Settings</h3>
+            <p className="mode-card-desc">Manage application configurations.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Study Intelligence */}
+      <section aria-label="Study intelligence center">
+        <h2 className="section-label">Study Intelligence</h2>
+        <div className="dashboard-ai-cards-row">
+          <AiReviewCard
+            hasStudyActivity={weeklyActivityCount > 0}
+            mostStudiedDocumentTitle={overview.mostStudiedDocument?.title}
+          />
+          <div className="dashboard-review-stack">
+            <WeaknessDetectionCard />
+            <StudyPlanCard />
+          </div>
+        </div>
+      </section>
+
+      {/* Sign Out at the Bottom */}
+      <footer style={{ marginTop: '1rem', borderTop: '1px solid #e5e5e5', paddingTop: '2rem' }}>
+        <form action="/api/auth" method="post">
+          <button
+            className="button secondary"
+            name="auth_action"
+            value="logout"
+            type="submit"
+            style={{ borderRadius: '6px', padding: '0.5rem 1rem', fontSize: '0.85rem' }}
           >
-            <span>04</span>
-            <strong>Practice loop</strong>
-            <small>
-              {recentQuiz ? `${recentQuiz.questionCount} questions` : "Create a quiz"}
-            </small>
-          </Link>
-        </div>
-
-        <aside className="dashboard-learning-drawer" aria-label="Current learning drawer">
-          <span className="panel-kicker">Current drawer</span>
-          <h3>{nextFocus}</h3>
-          <div className="activity-list">
-            <div className="activity-row">
-              <span>Recent document</span>
-              <strong>{recentDocument ? "Available" : "Empty"}</strong>
-            </div>
-            <div className="activity-row">
-              <span>Recent quiz</span>
-              <strong>{recentQuiz ? "Ready" : "None"}</strong>
-            </div>
-            <div className="activity-row">
-              <span>AI review</span>
-              <strong>{weeklyActivityCount > 0 ? "Seeded" : "Waiting"}</strong>
-            </div>
-          </div>
-        </aside>
-      </section>
-
-      <section className="dashboard-primary-grid" aria-label="Study focus">
-        <AiReviewCard
-          hasStudyActivity={weeklyActivityCount > 0}
-          mostStudiedDocumentTitle={overview.mostStudiedDocument?.title}
-        />
-
-        <section className="list-section continue-learning" aria-label="Continue learning">
-          <div className="section-heading">
-            <div>
-              <h2>Continue learning</h2>
-              <p>Pick up from the latest document or saved practice set.</p>
-            </div>
-          </div>
-
-          <div className="continue-learning-stack">
-            {recentDocument ? (
-              <article className="card continue-card">
-                <span className="panel-kicker">Recent document</span>
-                <h3>{recentDocument.fileName}</h3>
-                <p>
-                  {recentDocument.processingStatus} - Uploaded{" "}
-                  {formatDateTime(recentDocument.createdAt)}
-                </p>
-                <div className="button-row compact-button-row">
-                  <Link className="button secondary" href={recentDocument.href}>
-                    Continue document
-                  </Link>
-                </div>
-              </article>
-            ) : (
-              <article className="card empty-card">
-                <span className="panel-kicker">Recent document</span>
-                <h3>No documents yet</h3>
-                <p>Upload study material to unlock summaries, chat, notes, and quizzes.</p>
-                <div className="button-row compact-button-row">
-                  <Link className="button secondary" href="/documents">
-                    Upload document
-                  </Link>
-                </div>
-              </article>
-            )}
-
-            {recentQuiz ? (
-              <article className="card continue-card">
-                <span className="panel-kicker">Recent quiz</span>
-                <h3>{recentQuiz.documentTitle}</h3>
-                <p>
-                  {recentQuiz.questionCount} questions - Saved{" "}
-                  {formatDateTime(recentQuiz.createdAt)}
-                </p>
-                <div className="button-row compact-button-row">
-                  <Link className="button secondary" href={recentQuiz.href}>
-                    Continue quiz
-                  </Link>
-                </div>
-              </article>
-            ) : (
-              <article className="card empty-card">
-                <span className="panel-kicker">Recent quiz</span>
-                <h3>No saved quizzes yet</h3>
-                <p>Create a quiz from any processed document when you are ready to practice.</p>
-              </article>
-            )}
-          </div>
-        </section>
-      </section>
-
-      <section className="list-section dashboard-section" aria-label="Study analytics">
-        <div className="section-heading">
-          <div>
-            <h2>Study analytics</h2>
-            <p>Core learning signals from your documents, chats, quizzes, and notes.</p>
-          </div>
-        </div>
-
-        <div className="grid dashboard-stats">
-          {stats.map((stat) => (
-            <article className="card stat-card" key={stat.label}>
-              <h3>{stat.label}</h3>
-              <p>{stat.value}</p>
-              <span className="form-message">{stat.helper}</span>
-            </article>
-          ))}
-        </div>
-
-        <div className="dashboard-signal-grid">
-          <article className="card study-vitality-card">
-            <span className="panel-kicker">Core Vitality</span>
-            <h3>Current learning pulse</h3>
-            <div className="study-vitality-metrics" aria-label="Learning pulse">
-              <div>
-                <strong>{weeklyActivityCount}</strong>
-                <span>weekly actions</span>
-              </div>
-              <div>
-                <strong>{overview.totalSavedQuizzes}</strong>
-                <span>saved practice sets</span>
-              </div>
-              <div>
-                <strong>{overview.totalNotes}</strong>
-                <span>study notes</span>
-              </div>
-            </div>
-          </article>
-
-          <article className="card study-synapse-card">
-            <span className="panel-kicker">Active Synapse</span>
-            <h3>Study signal map</h3>
-            <div className="study-synapse-map" aria-label="Study signal map">
-              {synapseSignals.map((signal) => (
-                <div
-                  className={`study-synapse-cell ${getSynapseLevel(signal.value)}`}
-                  key={signal.label}
-                >
-                  <strong>{signal.value}</strong>
-                  <span>{signal.label}</span>
-                </div>
-              ))}
-            </div>
-          </article>
-        </div>
-
-        <div className="grid dashboard-analytics-grid">
-          <article className="card study-highlight-card">
-            <span className="panel-kicker">Most studied document</span>
-            {overview.mostStudiedDocument ? (
-              <>
-                <h3>{overview.mostStudiedDocument.title}</h3>
-                <p>Highest combined activity across chats, quizzes, and notes.</p>
-                <span className="study-score">
-                  Study score {overview.mostStudiedDocument.score}
-                </span>
-                <div className="button-row">
-                  <Link
-                    className="button secondary"
-                    href={overview.mostStudiedDocument.href}
-                  >
-                    Open document
-                  </Link>
-                </div>
-              </>
-            ) : (
-              <>
-                <h3>No study pattern yet</h3>
-                <p>
-                  Ask questions, save notes, or create quizzes to surface your
-                  strongest study focus here.
-                </p>
-              </>
-            )}
-          </article>
-
-          <article className="card">
-            <span className="panel-kicker">Activity summary</span>
-            <div className="activity-list">
-              <div className="activity-row">
-                <span>Chats this week</span>
-                <strong>{overview.studyActivitySummary.chats}</strong>
-              </div>
-              <div className="activity-row">
-                <span>Quizzes this week</span>
-                <strong>{overview.studyActivitySummary.quizzes}</strong>
-              </div>
-              <div className="activity-row">
-                <span>Notes this week</span>
-                <strong>{overview.studyActivitySummary.notes}</strong>
-              </div>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <section className="list-section dashboard-section" aria-label="Recent activity">
-        <div className="section-heading">
-          <div>
-            <h2>Recent activity</h2>
-            <p>A compact trail of what moved your learning forward.</p>
-          </div>
-        </div>
-
-        {activityFeed.length > 0 ? (
-          <div className="activity-feed">
-            {activityFeed.map((item) => (
-              <Link className="activity-feed-item" href={item.href} key={item.id}>
-                <span>{item.label}</span>
-                <strong>{item.title}</strong>
-                <small>{item.meta}</small>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <article className="card empty-card">
-            <h3>No recent learning activity</h3>
-            <p>
-              Upload a document, ask a question, save a note, or create a quiz
-              to populate this feed.
-            </p>
-          </article>
-        )}
-      </section>
-
-      <form className="button-row" action="/api/auth" method="post">
-        <button
-          className="button secondary"
-          name="auth_action"
-          value="logout"
-          type="submit"
-        >
-          Logout
-        </button>
-      </form>
+            Sign out
+          </button>
+        </form>
+      </footer>
     </main>
   );
 }

@@ -9,8 +9,8 @@ export function AppTopbar() {
   const viewModel = getWorkspaceTopbarViewModel(pathname);
 
   return (
-    <header className="app-topbar" aria-label="Workspace status">
-      <div className="topbar-breadcrumb" aria-label="Current workspace">
+    <header className="app-topbar" aria-label={viewModel.assistantStatus}>
+      <div className="topbar-breadcrumb" aria-label={viewModel.section}>
         <span>{viewModel.section}</span>
         <strong>{viewModel.title}</strong>
       </div>
@@ -25,7 +25,7 @@ export function AppTopbar() {
           <input
             id="workspace-search"
             type="search"
-            placeholder="Search your study workspace..."
+            placeholder="Search in dashboard"
             readOnly
           />
         </label>
@@ -34,7 +34,7 @@ export function AppTopbar() {
         </Link>
         <div className="topbar-profile" aria-label="Current learner">
           <span aria-hidden="true">AC</span>
-          <strong>Active Learner</strong>
+          <strong>Active learner</strong>
         </div>
       </div>
     </header>

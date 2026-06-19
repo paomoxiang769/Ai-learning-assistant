@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { filterNotesForSearch } from "@/lib/search";
 import { getInitialStudyNote } from "@/lib/study-notes-ui";
 
 type StudyNote = {
@@ -64,7 +65,7 @@ export function StudyNotesPanel({
   canGenerate,
   initialNoteId,
 }: StudyNotesPanelProps) {
-  const notesSectionRef = useRef<HTMLElement | null>(null);
+  const notePreviewRef = useRef<HTMLElement | null>(null);
   const [notes, setNotes] = useState<StudyNote[]>([]);
   const [loadedNote, setLoadedNote] = useState<StudyNote | null>(null);
   const [handledInitialNoteId, setHandledInitialNoteId] = useState<string | null>(
@@ -74,6 +75,7 @@ export function StudyNotesPanel({
     null,
   );
   const [hasLoadedNotesHistory, setHasLoadedNotesHistory] = useState(false);
+  const [noteSearchQuery, setNoteSearchQuery] = useState("");
   const [manualTitle, setManualTitle] = useState("");
   const [manualContent, setManualContent] = useState("");
   const [error, setError] = useState("");
@@ -86,6 +88,7 @@ export function StudyNotesPanel({
   const [notePendingDelete, setNotePendingDelete] = useState<StudyNote | null>(
     null,
   );
+  const visibleNotes = filterNotesForSearch(notes, noteSearchQuery);
 
   async function loadNotesHistory() {
     setHistoryError("");
@@ -217,7 +220,7 @@ export function StudyNotesPanel({
     let timeoutId: number | undefined;
     const animationFrameId = window.requestAnimationFrame(() => {
       timeoutId = window.setTimeout(() => {
-        notesSectionRef.current?.scrollIntoView({
+        notePreviewRef.current?.scrollIntoView({
           behavior: "smooth",
           block: "start",
         });
@@ -381,7 +384,6 @@ export function StudyNotesPanel({
 
   return (
     <section
-      ref={notesSectionRef}
       className="list-section parsed-text-section document-tool-panel"
       aria-label="Study notes"
       id="notes-section"
@@ -456,14 +458,29 @@ export function StudyNotesPanel({
       <div className="quiz-history" aria-label="Notes history">
         <div className="section-heading">
           <h3>Notes History</h3>
-          <p>{isLoadingHistory ? "Loading..." : `${notes.length} saved`}</p>
+          <p>
+            {isLoadingHistory
+              ? "Loading..."
+              : `${visibleNotes.length}/${notes.length} shown`}
+          </p>
         </div>
+
+        <label className="form-field search-field" htmlFor="notes-search">
+          Search notes
+          <input
+            id="notes-search"
+            type="search"
+            value={noteSearchQuery}
+            onChange={(event) => setNoteSearchQuery(event.target.value)}
+            placeholder="Search note titles and content"
+          />
+        </label>
 
         {historyError ? <p className="form-message error">{historyError}</p> : null}
 
-        {notes.length > 0 ? (
+        {visibleNotes.length > 0 ? (
           <div className="list">
-            {notes.map((note) => (
+            {visibleNotes.map((note) => (
               <article className="quiz-history-item tactile-history-item" key={note.id}>
                 <div>
                   <h4>{note.title ?? "Untitled note"}</h4>
@@ -493,15 +510,23 @@ export function StudyNotesPanel({
               </article>
             ))}
           </div>
-        ) : !isLoadingHistory && !historyError ? (
+        ) : !isLoadingHistory && !historyError && notes.length === 0 ? (
           <article className="card chat-empty-state">
             <p>No saved notes yet.</p>
+          </article>
+        ) : !isLoadingHistory && !historyError ? (
+          <article className="card chat-empty-state">
+            <p>No matching notes.</p>
           </article>
         ) : null}
       </div>
 
       {loadedNote ? (
-        <article className="card study-note-preview tactile-question-card">
+        <article
+          ref={notePreviewRef}
+          className="card study-note-preview tactile-question-card"
+          style={{ scrollMarginTop: "5rem" }}
+        >
           <div className="quiz-question-meta">
             <h3>{loadedNote.title ?? "Untitled note"}</h3>
             <span className="quiz-question-type">

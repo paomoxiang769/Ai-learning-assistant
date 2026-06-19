@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { DeleteDocumentForm } from "./delete-document-form";
+import { DocumentsSearchList, type DocumentsSearchItem } from "./documents-search-list";
 import { UploadForm } from "./upload-form";
 
 type DocumentsPageProps = {
@@ -32,13 +31,6 @@ function formatFileSize(size: number) {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function formatUploadDate(value: string) {
-  return new Intl.DateTimeFormat("en", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
 export default async function DocumentsPage({ searchParams }: DocumentsPageProps) {
   const params = await searchParams;
   const supabase = await createClient();
@@ -57,6 +49,14 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
     .order("created_at", { ascending: false });
 
   const userDocuments = (documents ?? []) as DocumentRow[];
+  const documentItems: DocumentsSearchItem[] = userDocuments.map((document) => ({
+    id: document.id,
+    fileName: document.file_name,
+    fileType: document.file_type,
+    fileSize: document.file_size,
+    createdAt: document.created_at,
+    href: `/documents/${document.id}`,
+  }));
   const totalLibrarySize = userDocuments.reduce(
     (totalSize, document) => totalSize + document.file_size,
     0,
@@ -123,33 +123,7 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
           ) : null}
 
           {userDocuments.length > 0 ? (
-            <div className="list source-shelf-grid">
-              {userDocuments.map((document) => (
-                <article
-                  className="list-item workspace-list-item source-file-card"
-                  key={document.id}
-                >
-                  <span className="source-lane-marker">{document.file_type}</span>
-                  <div>
-                    <span className="panel-kicker">{document.file_type}</span>
-                    <h2>{document.file_name}</h2>
-                    <p>
-                      {formatFileSize(document.file_size)} - Uploaded{" "}
-                      {formatUploadDate(document.created_at)}
-                    </p>
-                  </div>
-                  <div className="list-item-actions">
-                    <Link className="button secondary" href={`/documents/${document.id}`}>
-                      View
-                    </Link>
-                    <DeleteDocumentForm
-                      documentId={document.id}
-                      fileName={document.file_name}
-                    />
-                  </div>
-                </article>
-              ))}
-            </div>
+            <DocumentsSearchList documents={documentItems} />
           ) : null}
         </section>
       </section>

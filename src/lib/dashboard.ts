@@ -1,4 +1,9 @@
 import { normalizeStoredStudyQuizPayload } from "./study-quiz-types.ts";
+import type {
+  SearchableDocument,
+  SearchableNote,
+  SearchableQuiz,
+} from "./search.ts";
 
 type DashboardSupabaseClient = {
   from(table: string): any;
@@ -40,6 +45,22 @@ type DashboardQuizDocumentRow = {
   file_name: string;
 };
 
+type DashboardSearchNoteRow = {
+  id: string;
+  document_id: string;
+  title: string | null;
+  content: string;
+  created_at: string;
+};
+
+type DashboardSearchQuizRow = {
+  id: string;
+  document_id: string;
+  title: string | null;
+  quiz_json: unknown;
+  created_at: string;
+};
+
 type DashboardActivityRow = {
   document_id: string;
 };
@@ -72,6 +93,7 @@ export type DashboardStudyActivitySummary = {
   chats: number;
   quizzes: number;
   notes: number;
+  flashcards: number;
 };
 
 export type DashboardOverview = {
@@ -80,10 +102,34 @@ export type DashboardOverview = {
   totalSavedQuizzes: number;
   totalChatMessages: number;
   totalNotes: number;
+  totalFlashcards: number;
   mostStudiedDocument: DashboardMostStudiedDocument | null;
   studyActivitySummary: DashboardStudyActivitySummary;
   recentDocuments: DashboardRecentDocument[];
   recentQuizzes: DashboardRecentQuiz[];
+};
+
+export type DashboardSearchDocument = SearchableDocument & {
+  createdAt: string;
+};
+
+export type DashboardSearchNote = SearchableNote & {
+  documentId: string;
+  documentTitle: string;
+  createdAt: string;
+};
+
+export type DashboardSearchQuiz = SearchableQuiz & {
+  documentId: string;
+  documentTitle: string;
+  createdAt: string;
+  questionCount: number;
+};
+
+export type DashboardSearchData = {
+  documents: DashboardSearchDocument[];
+  notes: DashboardSearchNote[];
+  quizzes: DashboardSearchQuiz[];
 };
 
 async function loadCount(
@@ -114,7 +160,7 @@ async function loadCount(
     };
 
     if (error) {
-      console.error(
+      console.warn(
         `Dashboard warning: unable to load ${query.label}; using 0.`,
         error,
       );
@@ -123,7 +169,7 @@ async function loadCount(
 
     return count ?? 0;
   } catch (error) {
-    console.error(
+    console.warn(
       `Dashboard warning: unable to load ${query.label}; using 0.`,
       error,
     );
@@ -229,7 +275,7 @@ async function loadStudyActivitySummary(
   now: Date,
 ): Promise<DashboardStudyActivitySummary> {
   const cutoff = getSevenDayCutoff(now);
-  const [chats, quizzes, notes] = await Promise.all([
+  const [chats, quizzes, notes, flashcards] = await Promise.all([
     loadCount(
       supabase,
       {
@@ -272,12 +318,27 @@ async function loadStudyActivitySummary(
       },
       userId,
     ),
+    loadCount(
+      supabase,
+      {
+        table: "document_flashcards",
+        label: "recent flashcard activity count",
+        gteFilters: [
+          {
+            column: "created_at",
+            value: cutoff,
+          },
+        ],
+      },
+      userId,
+    ),
   ]);
 
   return {
     chats,
     quizzes,
     notes,
+    flashcards,
   };
 }
 
@@ -299,7 +360,7 @@ async function loadDocumentActivityRows(
     };
 
     if (error) {
-      console.error(
+      console.warn(
         `Dashboard warning: unable to load ${label}; using empty activity.`,
         error,
       );
@@ -308,7 +369,7 @@ async function loadDocumentActivityRows(
 
     return data ?? [];
   } catch (error) {
-    console.error(
+    console.warn(
       `Dashboard warning: unable to load ${label}; using empty activity.`,
       error,
     );
@@ -320,7 +381,7 @@ async function loadMostStudiedDocument(
   supabase: DashboardSupabaseClient,
   userId: string,
 ): Promise<DashboardMostStudiedDocument | null> {
-  const [chatRows, quizRows, noteRows] = await Promise.all([
+  const [chatRows, quizRows, noteRows, flashcardRows] = await Promise.all([
     loadDocumentActivityRows(
       supabase,
       "document_chat_messages",
@@ -339,11 +400,17 @@ async function loadMostStudiedDocument(
       "note activity rows",
       userId,
     ),
+    loadDocumentActivityRows(
+      supabase,
+      "document_flashcards",
+      "flashcard activity rows",
+      userId,
+    ),
   ]);
 
   const scoreByDocumentId = new Map<string, number>();
 
-  for (const row of [...chatRows, ...quizRows, ...noteRows]) {
+  for (const row of [...chatRows, ...quizRows, ...noteRows, ...flashcardRows]) {
     scoreByDocumentId.set(
       row.document_id,
       (scoreByDocumentId.get(row.document_id) ?? 0) + 1,
@@ -368,7 +435,7 @@ async function loadMostStudiedDocument(
   };
 
   if (error) {
-    console.error(
+    console.warn(
       "Dashboard warning: unable to load most studied document title; using empty activity.",
       error,
     );
@@ -412,6 +479,7 @@ export async function loadDashboardOverview({
     totalSavedQuizzes,
     totalChatMessages,
     totalNotes,
+    totalFlashcards,
     studyActivitySummary,
     recentDocuments,
     recentQuizzes,
@@ -462,6 +530,14 @@ export async function loadDashboardOverview({
       },
       userId,
     ),
+    loadCount(
+      supabase,
+      {
+        table: "document_flashcards",
+        label: "flashcard count",
+      },
+      userId,
+    ),
     loadStudyActivitySummary(supabase, userId, now),
     loadRecentDocuments(supabase, userId),
     loadRecentQuizzes(supabase, userId),
@@ -475,9 +551,141 @@ export async function loadDashboardOverview({
     totalSavedQuizzes,
     totalChatMessages,
     totalNotes,
+    totalFlashcards,
     mostStudiedDocument,
     studyActivitySummary,
     recentDocuments,
     recentQuizzes,
+  };
+}
+
+async function loadDocumentTitleMap(
+  supabase: DashboardSupabaseClient,
+  userId: string,
+  documentIds: string[],
+) {
+  const uniqueDocumentIds = [...new Set(documentIds)];
+
+  if (uniqueDocumentIds.length === 0) {
+    return new Map<string, string>();
+  }
+
+  const { data, error } = (await supabase
+    .from("documents")
+    .select("id, file_name")
+    .eq("user_id", userId)
+    .in("id", uniqueDocumentIds)) as {
+    data: DashboardQuizDocumentRow[] | null;
+    error: {
+      message: string;
+    } | null;
+  };
+
+  if (error) {
+    throw new Error(`Unable to load search document titles: ${error.message}`);
+  }
+
+  return new Map(
+    (data ?? []).map((document) => [document.id, document.file_name]),
+  );
+}
+
+export async function loadDashboardSearchData({
+  supabase,
+  userId,
+}: {
+  supabase: DashboardSupabaseClient;
+  userId: string;
+}): Promise<DashboardSearchData> {
+  const [documentQuery, noteQuery, quizQuery] = await Promise.all([
+    (await supabase
+      .from("documents")
+      .select("id, file_name, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })) as {
+      data: Array<{
+        id: string;
+        file_name: string;
+        created_at: string;
+      }> | null;
+      error: {
+        message: string;
+      } | null;
+    },
+    (await supabase
+      .from("document_notes")
+      .select("id, document_id, title, content, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })) as {
+      data: DashboardSearchNoteRow[] | null;
+      error: {
+        message: string;
+      } | null;
+    },
+    (await supabase
+      .from("document_quizzes")
+      .select("id, document_id, title, quiz_json, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })) as {
+      data: DashboardSearchQuizRow[] | null;
+      error: {
+        message: string;
+      } | null;
+    },
+  ]);
+
+  if (documentQuery.error) {
+    throw new Error(`Unable to load searchable documents: ${documentQuery.error.message}`);
+  }
+
+  if (noteQuery.error) {
+    throw new Error(`Unable to load searchable notes: ${noteQuery.error.message}`);
+  }
+
+  if (quizQuery.error) {
+    throw new Error(`Unable to load searchable quizzes: ${quizQuery.error.message}`);
+  }
+
+  const noteRows = noteQuery.data ?? [];
+  const quizRows = quizQuery.data ?? [];
+  const documentTitleById = await loadDocumentTitleMap(
+    supabase,
+    userId,
+    [
+      ...noteRows.map((note) => note.document_id),
+      ...quizRows.map((quiz) => quiz.document_id),
+    ],
+  );
+
+  return {
+    documents: (documentQuery.data ?? []).map((document) => ({
+      id: document.id,
+      fileName: document.file_name,
+      createdAt: document.created_at,
+      href: `/documents/${document.id}`,
+    })),
+    notes: noteRows.map((note) => ({
+      id: note.id,
+      documentId: note.document_id,
+      documentTitle: documentTitleById.get(note.document_id) ?? note.document_id,
+      title: note.title,
+      content: note.content,
+      createdAt: note.created_at,
+      href: `/documents/${note.document_id}?noteId=${encodeURIComponent(note.id)}`,
+    })),
+    quizzes: quizRows.map((quiz) => {
+      const normalizedQuiz = normalizeStoredStudyQuizPayload(quiz.quiz_json);
+
+      return {
+        id: quiz.id,
+        documentId: quiz.document_id,
+        documentTitle: documentTitleById.get(quiz.document_id) ?? quiz.document_id,
+        title: quiz.title,
+        quiz: normalizedQuiz,
+        questionCount: normalizedQuiz.length,
+        createdAt: quiz.created_at,
+        href: `/documents/${quiz.document_id}?quizId=${encodeURIComponent(quiz.id)}`,
+      };
+    }),
   };
 }

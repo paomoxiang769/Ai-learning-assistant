@@ -2,42 +2,43 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   getMainNavigationItems,
-  getSidebarWorkspaceStatus,
   getWorkspaceTopbarViewModel,
   isMainNavigationItemActive,
 } from "../src/lib/navigation.ts";
 
 test("getMainNavigationItems returns the main sidebar routes", () => {
-  assert.deepEqual(getMainNavigationItems(), [
-    {
-      label: "Dashboard",
-      href: "/dashboard",
-      iconLabel: "DB",
-      description: "Bento study overview",
-      tag: null,
-    },
-    {
-      label: "Documents",
-      href: "/documents",
-      iconLabel: "DS",
-      description: "Source library",
-      tag: "Core",
-    },
-    {
-      label: "Knowledge Base",
-      href: "/chat",
-      iconLabel: "KB",
-      description: "Cross-document chat",
-      tag: "AI",
-    },
-    {
-      label: "Review Center",
-      href: "/review",
-      iconLabel: "RV",
-      description: "History and notes",
-      tag: null,
-    },
-  ]);
+  const navigationItems = getMainNavigationItems();
+
+  assert.deepEqual(
+    navigationItems.map((item) => ({
+      label: item.label,
+      href: item.href,
+    })),
+    [
+      {
+        label: "Dashboard",
+        href: "/dashboard",
+      },
+      {
+        label: "Documents",
+        href: "/documents",
+      },
+      {
+        label: "Knowledge Base",
+        href: "/chat",
+      },
+      {
+        label: "Review Center",
+        href: "/review",
+      },
+    ],
+  );
+  assert.deepEqual(
+    navigationItems.map((item) => item.iconId),
+    ["dashboard", "documents", "knowledge", "review"],
+  );
+  assert.ok(navigationItems.every((item) => !("iconLabel" in item)));
+  assert.ok(navigationItems.every((item) => !("labelKey" in item)));
 });
 
 test("isMainNavigationItemActive matches exact and nested routes", () => {
@@ -46,16 +47,6 @@ test("isMainNavigationItemActive matches exact and nested routes", () => {
   assert.equal(isMainNavigationItemActive("/chat", "/chat"), true);
   assert.equal(isMainNavigationItemActive("/review", "/review?tab=notes"), true);
   assert.equal(isMainNavigationItemActive("/documents", "/chat"), false);
-});
-
-test("getSidebarWorkspaceStatus returns the study workspace status card", () => {
-  assert.deepEqual(getSidebarWorkspaceStatus(), {
-    eyebrow: "Study workspace",
-    title: "AI learning loop",
-    description: "Upload, ask, quiz, note, and review from one focused space.",
-    meterLabel: "Review readiness",
-    meterValue: 70,
-  });
 });
 
 test("getWorkspaceTopbarViewModel returns workspace titles for known routes", () => {

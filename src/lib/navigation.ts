@@ -1,17 +1,9 @@
+export type MainNavigationIconId = "dashboard" | "documents" | "knowledge" | "review";
+
 export type MainNavigationItem = {
   label: string;
   href: "/dashboard" | "/documents" | "/chat" | "/review";
-  iconLabel: string;
-  description: string;
-  tag: "AI" | "Core" | null;
-};
-
-export type SidebarWorkspaceStatus = {
-  eyebrow: string;
-  title: string;
-  description: string;
-  meterLabel: string;
-  meterValue: number;
+  iconId: MainNavigationIconId;
 };
 
 export type WorkspaceTopbarViewModel = {
@@ -26,47 +18,27 @@ const MAIN_NAVIGATION_ITEMS: MainNavigationItem[] = [
   {
     label: "Dashboard",
     href: "/dashboard",
-    iconLabel: "DB",
-    description: "Bento study overview",
-    tag: null,
+    iconId: "dashboard",
   },
   {
     label: "Documents",
     href: "/documents",
-    iconLabel: "DS",
-    description: "Source library",
-    tag: "Core",
+    iconId: "documents",
   },
   {
     label: "Knowledge Base",
     href: "/chat",
-    iconLabel: "KB",
-    description: "Cross-document chat",
-    tag: "AI",
+    iconId: "knowledge",
   },
   {
     label: "Review Center",
     href: "/review",
-    iconLabel: "RV",
-    description: "History and notes",
-    tag: null,
+    iconId: "review",
   },
 ];
 
-const SIDEBAR_WORKSPACE_STATUS: SidebarWorkspaceStatus = {
-  eyebrow: "Study workspace",
-  title: "AI learning loop",
-  description: "Upload, ask, quiz, note, and review from one focused space.",
-  meterLabel: "Review readiness",
-  meterValue: 70,
-};
-
 export function getMainNavigationItems(): MainNavigationItem[] {
   return MAIN_NAVIGATION_ITEMS.map((item) => ({ ...item }));
-}
-
-export function getSidebarWorkspaceStatus(): SidebarWorkspaceStatus {
-  return { ...SIDEBAR_WORKSPACE_STATUS };
 }
 
 export function getWorkspaceTopbarViewModel(
@@ -122,6 +94,5 @@ export function isMainNavigationItemActive(
   currentPath: string,
 ): boolean {
   const pathname = currentPath.split(/[?#]/)[0] || "/";
-
   return pathname === itemHref || pathname.startsWith(`${itemHref}/`);
 }

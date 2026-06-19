@@ -99,7 +99,7 @@ test("loadReviewCenter returns recent user-scoped chats quizzes and notes", asyn
     ],
     document_quizzes: [
       (state) => {
-        assert.equal(state.select, "id, document_id, quiz_json, created_at");
+        assert.equal(state.select, "id, document_id, title, quiz_json, created_at");
         assert.deepEqual(state.eq, [["user_id", "user-1"]]);
         assert.deepEqual(state.order, [["created_at", { ascending: false }]]);
         assert.equal(state.limit, 10);
@@ -108,6 +108,7 @@ test("loadReviewCenter returns recent user-scoped chats quizzes and notes", asyn
           {
             id: "quiz-1",
             document_id: "document-2",
+            title: "Graph review",
             quiz_json: {
               questions: [
                 {
@@ -125,7 +126,10 @@ test("loadReviewCenter returns recent user-scoped chats quizzes and notes", asyn
     ],
     document_notes: [
       (state) => {
-        assert.equal(state.select, "id, document_id, title, note_type, created_at");
+        assert.equal(
+          state.select,
+          "id, document_id, title, note_type, content, created_at",
+        );
         assert.deepEqual(state.eq, [["user_id", "user-1"]]);
         assert.deepEqual(state.order, [["created_at", { ascending: false }]]);
         assert.equal(state.limit, 10);
@@ -136,7 +140,26 @@ test("loadReviewCenter returns recent user-scoped chats quizzes and notes", asyn
             document_id: "document-3",
             title: "Exam prep",
             note_type: "manual",
+            content: "Review KMP prefix tables before the exam.",
             created_at: "2026-06-01T06:00:00.000Z",
+          },
+        ]);
+      },
+    ],
+    document_flashcards: [
+      (state) => {
+        assert.equal(state.select, "id, document_id, question, answer, created_at");
+        assert.deepEqual(state.eq, [["user_id", "user-1"]]);
+        assert.deepEqual(state.order, [["created_at", { ascending: false }]]);
+        assert.equal(state.limit, 10);
+
+        return createQueryResponse([
+          {
+            id: "flashcard-1",
+            document_id: "document-2",
+            question: "What is a graph edge?",
+            answer: "A connection between vertices.",
+            created_at: "2026-06-01T05:00:00.000Z",
           },
         ]);
       },
@@ -182,6 +205,10 @@ test("loadReviewCenter returns recent user-scoped chats quizzes and notes", asyn
           "This is a detailed assistant answer about dynamic programming and optimal substructure.",
         createdAt: "2026-06-01T08:00:00.000Z",
         href: "/documents/document-1",
+        searchableText: [
+          "Algorithms.pdf",
+          "This is a detailed assistant answer about dynamic programming and optimal substructure.",
+        ],
       },
     ],
     recentQuizzes: [
@@ -189,9 +216,16 @@ test("loadReviewCenter returns recent user-scoped chats quizzes and notes", asyn
         id: "quiz-1",
         documentId: "document-2",
         documentTitle: "Graphs.txt",
+        title: "Graph review",
         questionCount: 1,
         createdAt: "2026-06-01T07:00:00.000Z",
         href: "/documents/document-2?quizId=quiz-1",
+        searchableText: [
+          "Graphs.txt",
+          "Graph review",
+          "What is a graph?",
+          "Graphs model relationships.",
+        ],
       },
     ],
     recentNotes: [
@@ -201,8 +235,30 @@ test("loadReviewCenter returns recent user-scoped chats quizzes and notes", asyn
         documentTitle: "Study Plan.md",
         noteType: "manual",
         title: "Exam prep",
+        content: "Review KMP prefix tables before the exam.",
         createdAt: "2026-06-01T06:00:00.000Z",
         href: "/documents/document-3?noteId=note-1",
+        searchableText: [
+          "Study Plan.md",
+          "Exam prep",
+          "Review KMP prefix tables before the exam.",
+        ],
+      },
+    ],
+    recentFlashcards: [
+      {
+        id: "flashcard-1",
+        documentId: "document-2",
+        documentTitle: "Graphs.txt",
+        question: "What is a graph edge?",
+        answer: "A connection between vertices.",
+        createdAt: "2026-06-01T05:00:00.000Z",
+        href: "/documents/document-2",
+        searchableText: [
+          "Graphs.txt",
+          "What is a graph edge?",
+          "A connection between vertices.",
+        ],
       },
     ],
   });
@@ -219,6 +275,7 @@ test("loadReviewCenter returns empty sections when no recent study history exist
     document_chat_messages: [() => createQueryResponse([])],
     document_quizzes: [() => createQueryResponse([])],
     document_notes: [() => createQueryResponse([])],
+    document_flashcards: [() => createQueryResponse([])],
   });
 
   const reviewCenter = await loadReviewCenter({
@@ -230,6 +287,7 @@ test("loadReviewCenter returns empty sections when no recent study history exist
     recentChats: [],
     recentQuizzes: [],
     recentNotes: [],
+    recentFlashcards: [],
   });
 });
 

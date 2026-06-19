@@ -5,6 +5,11 @@ import { formatRawTextPreview } from "@/lib/raw-text-preview";
 import { createClient } from "@/lib/supabase/server";
 import { AskDocumentForm } from "./ask-document-form";
 import { DeleteDocumentForm } from "../delete-document-form";
+import {
+  DocumentWorkspaceTabs,
+  type DocumentWorkspaceTab,
+} from "./document-workspace-tabs";
+import { StudyFlashcardsPanel } from "./study-flashcards-panel";
 import { StudyNotesPanel } from "./study-notes-panel";
 import { StudyQuizPanel } from "./study-quiz-panel";
 
@@ -111,6 +116,7 @@ export default async function DocumentDetailPage({
   const summaryText = getSummaryText(userDocument.summary);
   const canAskDocument =
     userDocument.processing_status === "completed" && rawTextLength > 0;
+  const initialWorkspaceTab = query.quizId ? "quiz" : query.noteId ? "notes" : "overview";
 
   return (
     <main className="page document-workspace-page">
@@ -134,150 +140,109 @@ export default async function DocumentDetailPage({
       {query.error ? <p className="form-message error">{query.error}</p> : null}
       {query.warning ? <p className="form-message warning">{query.warning}</p> : null}
 
-      <section className="grid document-detail-meta document-meta-strip" aria-label="Document details">
-        <article className="card">
-          <h2>File name</h2>
-          <p>{userDocument.file_name}</p>
-        </article>
-        <article className="card">
-          <h2>File type</h2>
-          <p>{userDocument.file_type}</p>
-        </article>
-        <article className="card">
-          <h2>Uploaded</h2>
-          <p>{formatUploadDate(userDocument.created_at)}</p>
-        </article>
-        <article className="card">
-          <h2>Processing status</h2>
-          <p>{userDocument.processing_status}</p>
-        </article>
-        <article className="card">
-          <h2>Raw text length</h2>
-          <p>{rawTextLength} characters</p>
-        </article>
-      </section>
+      <DocumentWorkspaceTabs
+        initialTab={initialWorkspaceTab as DocumentWorkspaceTab}
+        overviewContent={
+          <div className="document-overview-workspace">
+            <section
+              className="document-overview-grid"
+              aria-label="Overview details"
+            >
+              <article className="card document-overview-card">
+                <span className="panel-kicker">Document Title</span>
+                <h2>{userDocument.file_name}</h2>
+                <p>{userDocument.file_type}</p>
+              </article>
+              <article className="card document-overview-card">
+                <span className="panel-kicker">Upload Time</span>
+                <h2>{formatUploadDate(userDocument.created_at)}</h2>
+                <p>Stored in your document library</p>
+              </article>
+              <article className="card document-overview-card">
+                <span className="panel-kicker">Processing Status</span>
+                <h2>{userDocument.processing_status}</h2>
+                <p>
+                  {canAskDocument
+                    ? "Ready for grounded study tools"
+                    : "Processing must complete before study tools unlock"}
+                </p>
+              </article>
+            </section>
 
-      <section
-        className="document-reader-grid paper-sync-shell"
-        aria-label="Document reading workspace"
-      >
-        <aside className="paper-sync-outline" aria-label="Document outline">
-          <span className="panel-kicker">Current mounted document</span>
-          <div className="paper-sync-mounted-card">
-            <strong>{userDocument.file_name}</strong>
-            <p>
-              {userDocument.file_type} - {rawTextLength} chars
-            </p>
-          </div>
-          <div className="paper-sync-index">
-            <span>Document knowledge index</span>
-            <a href="#document-summary-section">AI summary</a>
-            <a href="#document-preview-section">Raw text preview</a>
-            <a href="#document-chat-section">Grounded chat</a>
-            <a href="#quiz-section">Quiz arena</a>
-            <a href="#notes-section">Study notes</a>
-          </div>
-        </aside>
-
-        <div className="document-reader-main">
-          <header className="paper-sync-header">
-            <div>
-              <span className="panel-kicker">Paper Sync</span>
-              <h2>AI interactive reader</h2>
-              <p>
-                Summary, source preview, and study tools stay aligned to this
-                document.
-              </p>
-            </div>
-            <div className="paper-sync-status-grid" aria-label="Reader status">
-              <span>{userDocument.file_type}</span>
-              <span>{rawTextLength} chars</span>
-              <strong>{canAskDocument ? "Ready" : "Processing"}</strong>
-            </div>
-          </header>
-
-          <section
-            className="list-section"
-            aria-label="AI summary"
-            id="document-summary-section"
-          >
-            <div className="section-heading">
-              <div>
-                <h2>AI summary</h2>
-                <p>Generated from parsed text</p>
+            <section
+              className="list-section"
+              aria-label="AI summary"
+              id="document-summary-section"
+            >
+              <div className="section-heading">
+                <div>
+                  <h2>AI Summary</h2>
+                  <p>Generated from parsed text</p>
+                </div>
               </div>
-            </div>
-            <article className="card document-paper-card">
-              <p className="raw-text-preview">{summaryText}</p>
-            </article>
-          </section>
+              <article className="card document-paper-card">
+                <p className="raw-text-preview">{summaryText}</p>
+              </article>
+            </section>
 
-          <section
-            className="list-section"
-            aria-label="Parsed text preview"
-            id="document-preview-section"
-          >
-            <div className="section-heading">
-              <div>
-                <h2>Raw text preview</h2>
-                <p>First 500 characters</p>
+            <section className="list-section" aria-label="Document statistics">
+              <div className="section-heading">
+                <div>
+                  <h2>Document statistics</h2>
+                  <p>File and extraction signals</p>
+                </div>
               </div>
-            </div>
-            <article className="card document-paper-card">
-              <p className="raw-text-preview">{rawTextPreview}</p>
-            </article>
-          </section>
-        </div>
+              <div className="document-stat-grid">
+                <article className="card">
+                  <h3>File type</h3>
+                  <p>{userDocument.file_type}</p>
+                </article>
+                <article className="card">
+                  <h3>Raw text length</h3>
+                  <p>{rawTextLength} characters</p>
+                </article>
+                <article className="card">
+                  <h3>Study readiness</h3>
+                  <p>{canAskDocument ? "Ready" : "Locked"}</p>
+                </article>
+              </div>
+            </section>
 
-        <aside className="document-reader-side paper-sync-extract-panel">
-          <span className="panel-kicker">AI companion alignment</span>
-          <h2>Study from this document</h2>
-          <p>
-            Use grounded chat first, then generate a quiz or save notes from the
-            same source material.
-          </p>
-          <div className="paper-sync-focus-card" aria-label="AI extraction status">
-            <span>AI extraction</span>
-            <strong>{canAskDocument ? "Source aligned" : "Waiting for text"}</strong>
-            <p>
-              {canAskDocument
-                ? "Grounded chat, quiz, and notes can now use this document."
-                : "Processing must finish before study tools unlock."}
-            </p>
+            <details className="document-raw-text-disclosure">
+              <summary>Raw Text Preview</summary>
+              <div className="card document-paper-card">
+                <p className="raw-text-preview">{rawTextPreview}</p>
+              </div>
+            </details>
           </div>
-          <div className="activity-list">
-            <div className="activity-row">
-              <span>RAG chat</span>
-              <strong>{canAskDocument ? "Ready" : "Locked"}</strong>
-            </div>
-            <div className="activity-row">
-              <span>Quiz</span>
-              <strong>{canAskDocument ? "Ready" : "Locked"}</strong>
-            </div>
-            <div className="activity-row">
-              <span>Notes</span>
-              <strong>{canAskDocument ? "Ready" : "Locked"}</strong>
-            </div>
-          </div>
-        </aside>
-      </section>
-
-      <AskDocumentForm
-        documentId={userDocument.id}
-        canAsk={canAskDocument}
-        initialMessages={initialMessages}
-      />
-
-      <StudyQuizPanel
-        documentId={userDocument.id}
-        canGenerate={canAskDocument}
-        initialQuizId={query.quizId}
-      />
-
-      <StudyNotesPanel
-        documentId={userDocument.id}
-        canGenerate={canAskDocument}
-        initialNoteId={query.noteId}
+        }
+        chatContent={
+          <AskDocumentForm
+            documentId={userDocument.id}
+            canAsk={canAskDocument}
+            initialMessages={initialMessages}
+          />
+        }
+        quizContent={
+          <StudyQuizPanel
+            documentId={userDocument.id}
+            canGenerate={canAskDocument}
+            initialQuizId={query.quizId}
+          />
+        }
+        notesContent={
+          <StudyNotesPanel
+            documentId={userDocument.id}
+            canGenerate={canAskDocument}
+            initialNoteId={query.noteId}
+          />
+        }
+        flashcardsContent={
+          <StudyFlashcardsPanel
+            documentId={userDocument.id}
+            canGenerate={canAskDocument}
+          />
+        }
       />
 
       <div className="button-row document-action-row">

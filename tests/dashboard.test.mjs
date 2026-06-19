@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { loadDashboardOverview } from "../src/lib/dashboard.ts";
+import {
+  loadDashboardOverview,
+  loadDashboardSearchData,
+} from "../src/lib/dashboard.ts";
 
 function createQueryResponse(data, error = null, count = null) {
   return {
@@ -268,6 +271,26 @@ test("loadDashboardOverview returns user-scoped counts and recent activity", asy
         ]);
       },
     ],
+    document_flashcards: [
+      (state) => {
+        assert.equal(state.select, "id");
+        assert.deepEqual(state.selectOptions, { count: "exact", head: true });
+        assert.deepEqual(state.eq, [["user_id", "user-1"]]);
+        return createQueryResponse(null, null, 11);
+      },
+      (state) => {
+        assert.equal(state.select, "id");
+        assert.deepEqual(state.selectOptions, { count: "exact", head: true });
+        assert.deepEqual(state.eq, [["user_id", "user-1"]]);
+        assert.deepEqual(state.gte, [["created_at", "2026-05-25T00:00:00.000Z"]]);
+        return createQueryResponse(null, null, 5);
+      },
+      (state) => {
+        assert.equal(state.select, "document_id");
+        assert.deepEqual(state.eq, [["user_id", "user-1"]]);
+        return createQueryResponse([]);
+      },
+    ],
   });
 
   const overview = await loadDashboardOverview({
@@ -282,6 +305,7 @@ test("loadDashboardOverview returns user-scoped counts and recent activity", asy
     totalSavedQuizzes: 6,
     totalChatMessages: 18,
     totalNotes: 9,
+    totalFlashcards: 11,
     mostStudiedDocument: {
       id: "document-3",
       title: "Trees.pdf",
@@ -292,6 +316,7 @@ test("loadDashboardOverview returns user-scoped counts and recent activity", asy
       chats: 12,
       quizzes: 4,
       notes: 6,
+      flashcards: 5,
     },
     recentDocuments: [
       {
@@ -345,6 +370,10 @@ test("loadDashboardOverview returns user-scoped counts and recent activity", asy
     operations.filter(([name, table]) => name === "from" && table === "document_notes").length,
     3,
   );
+  assert.equal(
+    operations.filter(([name, table]) => name === "from" && table === "document_flashcards").length,
+    3,
+  );
 });
 
 test("loadDashboardOverview returns zero counts and empty lists when no user data exists", async () => {
@@ -373,6 +402,11 @@ test("loadDashboardOverview returns zero counts and empty lists when no user dat
       () => createQueryResponse(null, null, null),
       () => createQueryResponse([]),
     ],
+    document_flashcards: [
+      () => createQueryResponse(null, null, null),
+      () => createQueryResponse(null, null, null),
+      () => createQueryResponse([]),
+    ],
   });
 
   const overview = await loadDashboardOverview({
@@ -386,22 +420,29 @@ test("loadDashboardOverview returns zero counts and empty lists when no user dat
     totalSavedQuizzes: 0,
     totalChatMessages: 0,
     totalNotes: 0,
+    totalFlashcards: 0,
     mostStudiedDocument: null,
     studyActivitySummary: {
       chats: 0,
       quizzes: 0,
       notes: 0,
+      flashcards: 0,
     },
     recentDocuments: [],
     recentQuizzes: [],
   });
 });
 
-test("loadDashboardOverview returns zero and logs a warning when a count query fails", async () => {
+test("loadDashboardOverview returns zero and avoids console error overlay when a count query fails", async () => {
   const originalConsoleError = console.error;
+  const originalConsoleWarn = console.warn;
   const consoleErrors = [];
+  const consoleWarnings = [];
   console.error = (...args) => {
     consoleErrors.push(args);
+  };
+  console.warn = (...args) => {
+    consoleWarnings.push(args);
   };
 
   const { client } = createSupabaseStub({
@@ -426,6 +467,11 @@ test("loadDashboardOverview returns zero and logs a warning when a count query f
       () => createQueryResponse(null, null, 0),
       () => createQueryResponse([]),
     ],
+    document_flashcards: [
+      () => createQueryResponse(null, null, 0),
+      () => createQueryResponse(null, null, 0),
+      () => createQueryResponse([]),
+    ],
   });
 
   try {
@@ -440,19 +486,124 @@ test("loadDashboardOverview returns zero and logs a warning when a count query f
       totalSavedQuizzes: 0,
       totalChatMessages: 0,
       totalNotes: 0,
+      totalFlashcards: 0,
       mostStudiedDocument: null,
       studyActivitySummary: {
         chats: 0,
         quizzes: 0,
         notes: 0,
+        flashcards: 0,
       },
       recentDocuments: [],
       recentQuizzes: [],
     });
-    assert.equal(consoleErrors.length, 1);
-    assert.match(String(consoleErrors[0][0]), /Dashboard warning/);
-    assert.deepEqual(consoleErrors[0][1], { message: "database offline" });
+    assert.equal(consoleErrors.length, 0);
+    assert.equal(consoleWarnings.length, 1);
+    assert.match(String(consoleWarnings[0][0]), /Dashboard warning/);
+    assert.deepEqual(consoleWarnings[0][1], { message: "database offline" });
   } finally {
     console.error = originalConsoleError;
+    console.warn = originalConsoleWarn;
   }
+});
+
+test("loadDashboardSearchData returns user-scoped searchable documents notes and quizzes", async () => {
+  const { client } = createSupabaseStub({
+    documents: [
+      (state) => {
+        assert.equal(state.select, "id, file_name, created_at");
+        assert.deepEqual(state.eq, [["user_id", "user-1"]]);
+        assert.deepEqual(state.order, [["created_at", { ascending: false }]]);
+
+        return createQueryResponse([
+          {
+            id: "document-1",
+            file_name: "KMP Notes.pdf",
+            created_at: "2026-06-01T06:00:00.000Z",
+          },
+        ]);
+      },
+      (state) => {
+        assert.equal(state.select, "id, file_name");
+        assert.deepEqual(state.eq, [["user_id", "user-1"]]);
+        assert.deepEqual(state.in, [["id", ["document-1"]]]);
+
+        return createQueryResponse([
+          {
+            id: "document-1",
+            file_name: "KMP Notes.pdf",
+          },
+        ]);
+      },
+    ],
+    document_notes: [
+      (state) => {
+        assert.equal(state.select, "id, document_id, title, content, created_at");
+        assert.deepEqual(state.eq, [["user_id", "user-1"]]);
+        assert.deepEqual(state.order, [["created_at", { ascending: false }]]);
+
+        return createQueryResponse([
+          {
+            id: "note-1",
+            document_id: "document-1",
+            title: "Prefix function",
+            content: "KMP skips repeated comparisons.",
+            created_at: "2026-06-01T07:00:00.000Z",
+          },
+        ]);
+      },
+    ],
+    document_quizzes: [
+      (state) => {
+        assert.equal(state.select, "id, document_id, title, quiz_json, created_at");
+        assert.deepEqual(state.eq, [["user_id", "user-1"]]);
+        assert.deepEqual(state.order, [["created_at", { ascending: false }]]);
+
+        return createQueryResponse([
+          {
+            id: "quiz-1",
+            document_id: "document-1",
+            title: null,
+            quiz_json: [
+              {
+                question: "What does KMP preprocess?",
+                type: "short answer",
+                answer: "A prefix table.",
+                explanation: "The prefix table lets KMP skip repeated comparisons.",
+              },
+            ],
+            created_at: "2026-06-01T08:00:00.000Z",
+          },
+        ]);
+      },
+    ],
+  });
+
+  const searchData = await loadDashboardSearchData({
+    supabase: client,
+    userId: "user-1",
+  });
+
+  assert.deepEqual(searchData.documents, [
+    {
+      id: "document-1",
+      fileName: "KMP Notes.pdf",
+      createdAt: "2026-06-01T06:00:00.000Z",
+      href: "/documents/document-1",
+    },
+  ]);
+  assert.deepEqual(searchData.notes, [
+    {
+      id: "note-1",
+      documentId: "document-1",
+      documentTitle: "KMP Notes.pdf",
+      title: "Prefix function",
+      content: "KMP skips repeated comparisons.",
+      createdAt: "2026-06-01T07:00:00.000Z",
+      href: "/documents/document-1?noteId=note-1",
+    },
+  ]);
+  assert.equal(searchData.quizzes[0]?.id, "quiz-1");
+  assert.equal(searchData.quizzes[0]?.documentTitle, "KMP Notes.pdf");
+  assert.equal(searchData.quizzes[0]?.quiz[0]?.question, "What does KMP preprocess?");
 });

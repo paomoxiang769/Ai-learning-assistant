@@ -13,6 +13,7 @@ const protectedApiImplementations = [
   "src/lib/study-quiz-route.ts",
   "src/lib/study-notes-route.ts",
   "src/lib/study-review-route.ts",
+  "src/lib/weakness-detection-route.ts",
 ];
 
 test("protected API implementations reject anonymous users with 401", async () => {

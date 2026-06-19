@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { BorderGlow } from "@/components/border-glow";
 
 type StudyReviewSignals = {
   recentChatsCount: number;
@@ -71,7 +72,7 @@ export function AiReviewCard({
     : "Create a review once you have chats, quizzes, or notes. The assistant will turn activity into a next step.";
 
   return (
-    <article className="card ai-review-card">
+    <BorderGlow className="card ai-review-card">
       <div className="ai-review-heading">
         <div>
           <p className="eyebrow">AI Review</p>
@@ -124,6 +125,6 @@ export function AiReviewCard({
           </p>
         </div>
       )}
-    </article>
+    </BorderGlow>
   );
 }
