@@ -174,6 +174,16 @@ export function KnowledgeBaseChatForm({
         </aside>
       </div>
 
+      <div className="knowledge-answer-toolbar">
+        <div>
+          <span className="panel-kicker">Answer stream</span>
+          <h3>{messages.length > 0 ? `${messages.length} messages` : "Ready for a question"}</h3>
+        </div>
+        <span className="knowledge-answer-status">
+          {isSubmitting ? "Thinking" : canAsk ? "Grounded retrieval" : "Waiting for sources"}
+        </span>
+      </div>
+
       {viewModel.showEmptyState ? (
         <article className="card chat-empty-state knowledge-empty-state knowledge-answer-stream">
           <p>Ask across all your processed materials.</p>

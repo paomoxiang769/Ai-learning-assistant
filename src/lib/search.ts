@@ -21,8 +21,33 @@ export type SearchableQuiz = {
   href: string;
 };
 
+export type SearchableFlashcard = {
+  id: string;
+  documentId: string;
+  documentTitle?: string;
+  question: string;
+  answer: string;
+  href: string;
+};
+
 export type SearchableReviewItem = {
   searchableText: string[];
+};
+
+export type SemanticSearchResultType =
+  | "document"
+  | "note"
+  | "quiz"
+  | "flashcard";
+
+export type SemanticSearchResult = {
+  id: string;
+  type: SemanticSearchResultType;
+  title: string;
+  href: string;
+  similarity: number | null;
+  relevancePercent: number | null;
+  excerpt?: string;
 };
 
 export function normalizeSearchQuery(query: string) {
@@ -70,11 +95,116 @@ export function filterQuizzesForSearch<T extends { quiz: StudyQuizQuestion[] }>(
   );
 }
 
+export function filterFlashcardsForSearch<
+  T extends { question: string; answer: string },
+>(flashcards: T[], query: string) {
+  return flashcards.filter((flashcard) =>
+    matchesSearchQuery(query, [flashcard.question, flashcard.answer]),
+  );
+}
+
 export function filterReviewItemsForSearch<T extends SearchableReviewItem>(
   items: T[],
   query: string,
 ) {
   return items.filter((item) => matchesSearchQuery(query, item.searchableText));
+}
+
+function getExcerpt(value: string) {
+  const normalizedValue = value.replace(/\s+/g, " ").trim();
+
+  if (normalizedValue.length <= 120) {
+    return normalizedValue;
+  }
+
+  return `${normalizedValue.slice(0, 117)}...`;
+}
+
+function getQuizSearchText(quiz: SearchableQuiz) {
+  return quiz.quiz
+    .map((question) =>
+      [question.question, question.answer, question.explanation]
+        .filter(Boolean)
+        .join(" "),
+    )
+    .join(" ");
+}
+
+export function buildKeywordSearchResults<
+  TDocument extends SearchableDocument,
+  TNote extends SearchableNote & { documentTitle?: string },
+  TQuiz extends SearchableQuiz,
+  TFlashcard extends SearchableFlashcard,
+>({
+  query,
+  documents,
+  notes,
+  quizzes,
+  flashcards,
+}: {
+  query: string;
+  documents: TDocument[];
+  notes: TNote[];
+  quizzes: TQuiz[];
+  flashcards: TFlashcard[];
+}): SemanticSearchResult[] {
+  const normalizedQuery = normalizeSearchQuery(query);
+
+  if (!normalizedQuery) {
+    return [];
+  }
+
+  const documentResults = filterDocumentsForSearch(documents, query).map(
+    (document): SemanticSearchResult => ({
+      id: document.id,
+      type: "document",
+      title: document.fileName,
+      href: document.href,
+      similarity: null,
+      relevancePercent: null,
+      excerpt: "Open document workspace",
+    }),
+  );
+  const noteResults = filterNotesForSearch(notes, query).map(
+    (note): SemanticSearchResult => ({
+      id: note.id,
+      type: "note",
+      title: note.title ?? note.documentTitle ?? "Untitled note",
+      href: note.href,
+      similarity: null,
+      relevancePercent: null,
+      excerpt: getExcerpt(note.content),
+    }),
+  );
+  const quizResults = filterQuizzesForSearch(quizzes, query).map(
+    (quiz): SemanticSearchResult => ({
+      id: quiz.id,
+      type: "quiz",
+      title: quiz.title ?? quiz.documentTitle ?? "Saved quiz",
+      href: quiz.href,
+      similarity: null,
+      relevancePercent: null,
+      excerpt: getExcerpt(getQuizSearchText(quiz) || "Saved quiz"),
+    }),
+  );
+  const flashcardResults = filterFlashcardsForSearch(flashcards, query).map(
+    (flashcard): SemanticSearchResult => ({
+      id: flashcard.id,
+      type: "flashcard",
+      title: flashcard.question,
+      href: flashcard.href,
+      similarity: null,
+      relevancePercent: null,
+      excerpt: getExcerpt(flashcard.answer),
+    }),
+  );
+
+  return [
+    ...documentResults,
+    ...noteResults,
+    ...quizResults,
+    ...flashcardResults,
+  ];
 }
 
 export function buildGlobalSearchResults<

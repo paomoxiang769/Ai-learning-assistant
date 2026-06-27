@@ -35,11 +35,21 @@ export default async function KnowledgeBaseChatPage() {
   ).length;
 
   return (
-    <main className="page workspace-page">
+    <main className="dashboard-redesign-container workspace-page">
+      <header className="workspace-dashboard-header">
+        <div>
+          <p className="eyebrow">Knowledge Base</p>
+          <h1>Knowledge Base</h1>
+        </div>
+        <div className="time-pill-selector" aria-label="Knowledge base mode">
+          <span className="time-pill active">Cross-document</span>
+        </div>
+      </header>
+
       <section className="workspace-hero" aria-label="Knowledge base overview">
         <div>
           <p className="eyebrow">Knowledge Base</p>
-          <h1>Chat across your materials.</h1>
+          <h2>Chat across your materials.</h2>
           <p>
             Ask one question across all processed study documents without binding the
             answer to a single file.

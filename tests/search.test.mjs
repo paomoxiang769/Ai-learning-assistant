@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildGlobalSearchResults,
+  buildKeywordSearchResults,
   filterDocumentsForSearch,
+  filterFlashcardsForSearch,
   filterNotesForSearch,
   filterQuizzesForSearch,
   filterReviewItemsForSearch,
@@ -26,7 +28,7 @@ const notes = [
   {
     id: "note-1",
     title: "Prefix table",
-    content: "KMP avoids rechecking characters by using a prefix function.",
+    content: "KMP avoids repeated comparisons by using a prefix function.",
     href: "/documents/document-1?noteId=note-1",
   },
   {
@@ -65,6 +67,25 @@ const quizzes = [
         explanation: "The queue preserves discovery order.",
       },
     ],
+  },
+];
+
+const flashcards = [
+  {
+    id: "flashcard-1",
+    documentId: "document-1",
+    documentTitle: "String Algorithms",
+    question: "How does KMP avoid repeated comparisons?",
+    answer: "It reuses prefix table information after a mismatch.",
+    href: "/documents/document-1?flashcardId=flashcard-1",
+  },
+  {
+    id: "flashcard-2",
+    documentId: "document-2",
+    documentTitle: "Graphs",
+    question: "What does BFS use?",
+    answer: "A queue.",
+    href: "/documents/document-2?flashcardId=flashcard-2",
   },
 ];
 
@@ -121,6 +142,51 @@ test("filter helpers search the requested fields only", () => {
   assert.deepEqual(
     filterQuizzesForSearch(quizzes, "skip repeated").map((quiz) => quiz.id),
     ["quiz-1"],
+  );
+  assert.deepEqual(
+    filterFlashcardsForSearch(flashcards, "prefix table").map(
+      (flashcard) => flashcard.id,
+    ),
+    ["flashcard-1"],
+  );
+});
+
+test("buildKeywordSearchResults returns unified fallback results without semantic scores", () => {
+  const results = buildKeywordSearchResults({
+    query: "repeated comparisons",
+    documents,
+    notes,
+    quizzes,
+    flashcards,
+  });
+
+  assert.deepEqual(
+    results.map((result) => ({
+      id: result.id,
+      type: result.type,
+      title: result.title,
+      relevancePercent: result.relevancePercent,
+    })),
+    [
+      {
+        id: "note-1",
+        type: "note",
+        title: "Prefix table",
+        relevancePercent: null,
+      },
+      {
+        id: "quiz-1",
+        type: "quiz",
+        title: "String Algorithms",
+        relevancePercent: null,
+      },
+      {
+        id: "flashcard-1",
+        type: "flashcard",
+        title: "How does KMP avoid repeated comparisons?",
+        relevancePercent: null,
+      },
+    ],
   );
 });
 

@@ -20,11 +20,21 @@ export default async function QuizPage({ params }: QuizPageProps) {
   }
 
   return (
-    <main className="page workspace-page">
+    <main className="dashboard-redesign-container workspace-page">
+      <header className="workspace-dashboard-header">
+        <div>
+          <p className="eyebrow">Quiz</p>
+          <h1>Quiz Workspace</h1>
+        </div>
+        <div className="time-pill-selector" aria-label="Quiz workspace status">
+          <span className="time-pill active">Skeleton</span>
+        </div>
+      </header>
+
       <section className="workspace-hero" aria-label="Quiz overview">
         <div>
           <p className="eyebrow">Quiz</p>
-          <h1>Quiz workspace</h1>
+          <h2>Quiz workspace</h2>
           <p>
             This route is a static quiz skeleton. Question generation, answer
             checking, scoring, and attempt storage are intentionally deferred.

@@ -7,17 +7,17 @@ const dashboardSource = await readFile(
   "utf8",
 );
 
-test("dashboard renders a bento command center", () => {
-  assert.match(dashboardSource, /bento-command-center/);
-  assert.match(dashboardSource, /dashboard-command-grid/);
-  assert.match(dashboardSource, /dashboard-learning-drawer/);
-  assert.match(dashboardSource, /dashboard-route-chip/);
+test("dashboard renders the release candidate command surface", () => {
+  assert.match(dashboardSource, /dashboard-redesign-container/);
+  assert.match(dashboardSource, /dashboard-redesign-header/);
+  assert.match(dashboardSource, /get-started-panel/);
+  assert.match(dashboardSource, /premium-stats-grid/);
 });
 
-test("dashboard mirrors the target Bento study sections", () => {
-  assert.match(dashboardSource, /Core Vitality/);
-  assert.match(dashboardSource, /AI Daily Nexus/);
-  assert.match(dashboardSource, /Active Synapse/);
-  assert.match(dashboardSource, /study-synapse-map/);
-  assert.match(dashboardSource, /study-synapse-cell/);
+test("dashboard mirrors the release candidate study sections", () => {
+  assert.match(dashboardSource, /Recommended study modes/);
+  assert.match(dashboardSource, /Study Intelligence/);
+  assert.match(dashboardSource, /DashboardGlobalSearch/);
+  assert.match(dashboardSource, /WeaknessDetectionCard/);
+  assert.match(dashboardSource, /StudyPlanCard/);
 });

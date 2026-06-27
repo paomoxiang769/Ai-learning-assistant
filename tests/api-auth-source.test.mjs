@@ -12,7 +12,10 @@ const protectedApiImplementations = [
   "src/lib/rag-answer-route.ts",
   "src/lib/study-quiz-route.ts",
   "src/lib/study-notes-route.ts",
+  "src/lib/study-flashcards-route.ts",
   "src/lib/study-review-route.ts",
+  "src/lib/study-plan-route.ts",
+  "src/lib/semantic-search.ts",
   "src/lib/weakness-detection-route.ts",
 ];
 

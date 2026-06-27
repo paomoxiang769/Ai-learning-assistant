@@ -121,7 +121,7 @@ test("buildDashboardActivityFeed returns an empty feed when there is no activity
 
 test("dashboard page renders global search", () => {
   assert.match(dashboardPageSource, /DashboardGlobalSearch/);
-  assert.match(dashboardPageSource, /Search documents, notes, quizzes\.\.\./);
+  assert.match(dashboardPageSource, /Search documents, notes, quizzes, flashcards\.\.\./);
 });
 
 test("dashboard page surfaces flashcard analytics", () => {
@@ -170,6 +170,12 @@ test("dashboard page renders study plan below weakness detection", () => {
 });
 
 test("dashboard global search uses lightweight grouped result cards", () => {
+  assert.match(dashboardGlobalSearchSource, /\/api\/study\/search/);
+  assert.match(dashboardGlobalSearchSource, /Search Results/);
+  assert.match(dashboardGlobalSearchSource, /Relevance/);
+  assert.match(dashboardGlobalSearchSource, /Semantic search unavailable; showing keyword matches\./);
+  assert.match(dashboardGlobalSearchSource, /Keyword match/);
+  assert.match(dashboardGlobalSearchSource, /flashcards/);
   assert.match(dashboardGlobalSearchSource, /search-result-card-grid/);
   assert.match(dashboardGlobalSearchSource, /search-result-group-card/);
   assert.match(dashboardGlobalSearchSource, /search-result-group-header/);
@@ -187,38 +193,15 @@ test("dashboard global search result groups use BorderGlow", () => {
   assert.match(globalsCssSource, /\.search-result-group-card\.border-glow-card > \.border-glow-inner/);
 });
 
-test("dashboard global search can hide and restore result columns", () => {
-  assert.match(dashboardGlobalSearchSource, /type SearchColumnId = "documents" \| "notes" \| "quizzes";/);
-  assert.match(dashboardGlobalSearchSource, /hiddenColumns, setHiddenColumns/);
-  assert.match(
-    dashboardGlobalSearchSource,
-    /\(\) => new Set\(searchColumns\.map\(\(column\) => column\.id\)\)/,
-  );
-  assert.match(dashboardGlobalSearchSource, /toggleColumnVisibility/);
-  assert.match(dashboardGlobalSearchSource, /hideAllColumns/);
-  assert.match(dashboardGlobalSearchSource, /showAllColumns/);
-  assert.match(dashboardGlobalSearchSource, /isHiddenNoticeDismissed/);
-  assert.match(dashboardGlobalSearchSource, /search-column-controls/);
-  assert.match(dashboardGlobalSearchSource, /aria-pressed=\{!hiddenColumns\.has\(column\.id\)\}/);
-  assert.match(dashboardGlobalSearchSource, /role="status"/);
-  assert.match(dashboardGlobalSearchSource, /aria-live="polite"/);
-  assert.match(dashboardGlobalSearchSource, /aria-label="Dismiss hidden search columns notice"/);
-  assert.match(dashboardGlobalSearchSource, /search-results-hidden-copy/);
-  assert.match(dashboardGlobalSearchSource, /search-results-hidden-action/);
-  assert.match(dashboardGlobalSearchSource, /search-results-hidden-close/);
-  assert.match(dashboardGlobalSearchSource, /Hidden columns stay available from the controls above\./);
-  assert.doesNotMatch(
-    dashboardGlobalSearchSource,
-    /<BorderGlow className="card empty-card search-results-hidden-state"/,
-  );
-  assert.match(globalsCssSource, /\.search-column-controls/);
-  assert.match(globalsCssSource, /\.search-column-toggle\[aria-pressed="false"\]/);
-  assert.match(globalsCssSource, /\.search-results-hidden-state/);
-  assert.match(globalsCssSource, /\.search-results-hidden-state\s*\{[\s\S]*?display:\s*flex;/);
-  assert.match(globalsCssSource, /\.search-results-hidden-state\s*\{[\s\S]*?border:\s*1px dashed #e5e5e5;/);
-  assert.match(globalsCssSource, /\.search-results-hidden-copy/);
-  assert.match(globalsCssSource, /\.search-results-hidden-action/);
-  assert.match(globalsCssSource, /\.search-results-hidden-close/);
+test("dashboard global search renders unified semantic results with client fallback", () => {
+  assert.match(dashboardGlobalSearchSource, /useEffect/);
+  assert.match(dashboardGlobalSearchSource, /AbortController/);
+  assert.match(dashboardGlobalSearchSource, /buildKeywordSearchResults/);
+  assert.match(dashboardGlobalSearchSource, /isSemanticSearchResponse/);
+  assert.match(dashboardGlobalSearchSource, /setDidUseClientFallback\(true\)/);
+  assert.match(dashboardGlobalSearchSource, /search-result-relevance/);
+  assert.match(globalsCssSource, /\.search-result-card-meta/);
+  assert.match(globalsCssSource, /\.search-result-relevance/);
 });
 
 test("get started panel keeps its plain redesigned section layout without BorderGlow", () => {
@@ -299,8 +282,13 @@ test("BorderGlow smooths pointer interaction and keeps hover feedback alive", as
 test("dashboard header keeps its plain non-BorderGlow controls", () => {
   assert.match(dashboardPageSource, /<header className="dashboard-redesign-header">/);
   assert.match(dashboardPageSource, /className="time-pill-selector"/);
+  assert.match(dashboardPageSource, /Last 7 days/);
   assert.doesNotMatch(dashboardPageSource, /<BorderGlow\s+as="header"\s+className="dashboard-redesign-header"/);
   assert.doesNotMatch(dashboardPageSource, /<BorderGlow\s+as="div"\s+className="time-pill-selector"/);
+  assert.doesNotMatch(dashboardPageSource, /get-started-dismiss-btn/);
+  assert.doesNotMatch(dashboardPageSource, /style=\{\{/);
+  assert.match(globalsCssSource, /\.dashboard-footer/);
+  assert.match(globalsCssSource, /\.dashboard-sign-out-button/);
   assert.doesNotMatch(dashboardPageSource, /edgeOnly/);
   assert.doesNotMatch(globalsCssSource, /\.border-glow-card\.edge-only/);
 });

@@ -1,6 +1,7 @@
 import { normalizeStoredStudyQuizPayload } from "./study-quiz-types.ts";
 import type {
   SearchableDocument,
+  SearchableFlashcard,
   SearchableNote,
   SearchableQuiz,
 } from "./search.ts";
@@ -58,6 +59,14 @@ type DashboardSearchQuizRow = {
   document_id: string;
   title: string | null;
   quiz_json: unknown;
+  created_at: string;
+};
+
+type DashboardSearchFlashcardRow = {
+  id: string;
+  document_id: string;
+  question: string;
+  answer: string;
   created_at: string;
 };
 
@@ -126,10 +135,15 @@ export type DashboardSearchQuiz = SearchableQuiz & {
   questionCount: number;
 };
 
+export type DashboardSearchFlashcard = SearchableFlashcard & {
+  createdAt: string;
+};
+
 export type DashboardSearchData = {
   documents: DashboardSearchDocument[];
   notes: DashboardSearchNote[];
   quizzes: DashboardSearchQuiz[];
+  flashcards: DashboardSearchFlashcard[];
 };
 
 async function loadCount(
@@ -597,7 +611,7 @@ export async function loadDashboardSearchData({
   supabase: DashboardSupabaseClient;
   userId: string;
 }): Promise<DashboardSearchData> {
-  const [documentQuery, noteQuery, quizQuery] = await Promise.all([
+  const [documentQuery, noteQuery, quizQuery, flashcardQuery] = await Promise.all([
     (await supabase
       .from("documents")
       .select("id, file_name, created_at")
@@ -632,6 +646,16 @@ export async function loadDashboardSearchData({
         message: string;
       } | null;
     },
+    (await supabase
+      .from("document_flashcards")
+      .select("id, document_id, question, answer, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })) as {
+      data: DashboardSearchFlashcardRow[] | null;
+      error: {
+        message: string;
+      } | null;
+    },
   ]);
 
   if (documentQuery.error) {
@@ -646,14 +670,22 @@ export async function loadDashboardSearchData({
     throw new Error(`Unable to load searchable quizzes: ${quizQuery.error.message}`);
   }
 
+  if (flashcardQuery.error) {
+    throw new Error(
+      `Unable to load searchable flashcards: ${flashcardQuery.error.message}`,
+    );
+  }
+
   const noteRows = noteQuery.data ?? [];
   const quizRows = quizQuery.data ?? [];
+  const flashcardRows = flashcardQuery.data ?? [];
   const documentTitleById = await loadDocumentTitleMap(
     supabase,
     userId,
     [
       ...noteRows.map((note) => note.document_id),
       ...quizRows.map((quiz) => quiz.document_id),
+      ...flashcardRows.map((flashcard) => flashcard.document_id),
     ],
   );
 
@@ -687,5 +719,17 @@ export async function loadDashboardSearchData({
         href: `/documents/${quiz.document_id}?quizId=${encodeURIComponent(quiz.id)}`,
       };
     }),
+    flashcards: flashcardRows.map((flashcard) => ({
+      id: flashcard.id,
+      documentId: flashcard.document_id,
+      documentTitle:
+        documentTitleById.get(flashcard.document_id) ?? flashcard.document_id,
+      question: flashcard.question,
+      answer: flashcard.answer,
+      createdAt: flashcard.created_at,
+      href: `/documents/${flashcard.document_id}?flashcardId=${encodeURIComponent(
+        flashcard.id,
+      )}`,
+    })),
   };
 }

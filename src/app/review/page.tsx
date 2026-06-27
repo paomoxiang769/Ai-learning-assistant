@@ -24,11 +24,21 @@ export default async function ReviewCenterPage() {
     reviewCenter.recentFlashcards.length;
 
   return (
-    <main className="page workspace-page">
+    <main className="dashboard-redesign-container workspace-page">
+      <header className="workspace-dashboard-header">
+        <div>
+          <p className="eyebrow">Review Center</p>
+          <h1>Review Center</h1>
+        </div>
+        <div className="time-pill-selector" aria-label="Review center scope">
+          <span className="time-pill active">Recent activity</span>
+        </div>
+      </header>
+
       <section className="workspace-hero" aria-label="Review center overview">
         <div>
           <p className="eyebrow">Review Center</p>
-          <h1>Unified study history</h1>
+          <h2>Unified study history</h2>
           <p>Review recent chats, quizzes, notes, and flashcards in one place.</p>
         </div>
         <aside className="workspace-hero-card">

@@ -577,6 +577,23 @@ test("loadDashboardSearchData returns user-scoped searchable documents notes and
         ]);
       },
     ],
+    document_flashcards: [
+      (state) => {
+        assert.equal(state.select, "id, document_id, question, answer, created_at");
+        assert.deepEqual(state.eq, [["user_id", "user-1"]]);
+        assert.deepEqual(state.order, [["created_at", { ascending: false }]]);
+
+        return createQueryResponse([
+          {
+            id: "flashcard-1",
+            document_id: "document-1",
+            question: "How does KMP avoid repeated comparisons?",
+            answer: "It uses a prefix table.",
+            created_at: "2026-06-01T09:00:00.000Z",
+          },
+        ]);
+      },
+    ],
   });
 
   const searchData = await loadDashboardSearchData({
@@ -606,4 +623,15 @@ test("loadDashboardSearchData returns user-scoped searchable documents notes and
   assert.equal(searchData.quizzes[0]?.id, "quiz-1");
   assert.equal(searchData.quizzes[0]?.documentTitle, "KMP Notes.pdf");
   assert.equal(searchData.quizzes[0]?.quiz[0]?.question, "What does KMP preprocess?");
+  assert.deepEqual(searchData.flashcards, [
+    {
+      id: "flashcard-1",
+      documentId: "document-1",
+      documentTitle: "KMP Notes.pdf",
+      question: "How does KMP avoid repeated comparisons?",
+      answer: "It uses a prefix table.",
+      createdAt: "2026-06-01T09:00:00.000Z",
+      href: "/documents/document-1?flashcardId=flashcard-1",
+    },
+  ]);
 });

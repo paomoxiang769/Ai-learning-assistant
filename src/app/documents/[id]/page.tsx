@@ -119,11 +119,21 @@ export default async function DocumentDetailPage({
   const initialWorkspaceTab = query.quizId ? "quiz" : query.noteId ? "notes" : "overview";
 
   return (
-    <main className="page document-workspace-page">
+    <main className="dashboard-redesign-container document-workspace-page">
+      <header className="workspace-dashboard-header">
+        <div>
+          <p className="eyebrow">Document Detail</p>
+          <h1>Document Detail</h1>
+        </div>
+        <div className="time-pill-selector" aria-label="Document processing status">
+          <span className="time-pill active">{userDocument.processing_status}</span>
+        </div>
+      </header>
+
       <section className="workspace-hero document-workspace-hero" aria-label="Document overview">
         <div>
           <p className="eyebrow">Document detail</p>
-          <h1>{userDocument.file_name}</h1>
+          <h2>{userDocument.file_name}</h2>
           <p>Review the uploaded file details or manage this document.</p>
         </div>
         <aside className="workspace-hero-card">

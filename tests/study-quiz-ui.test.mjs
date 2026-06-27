@@ -6,6 +6,20 @@ const quizPanelSource = await readFile(
   new URL("../src/app/documents/[id]/study-quiz-panel.tsx", import.meta.url),
   "utf8",
 );
+const quizPageSource = await readFile(
+  new URL("../src/app/quiz/[id]/page.tsx", import.meta.url),
+  "utf8",
+);
+const globalsSource = await readFile(
+  new URL("../src/app/globals.css", import.meta.url),
+  "utf8",
+);
+
+test("quiz route uses the dashboard-like workspace shell", () => {
+  assert.match(quizPageSource, /dashboard-redesign-container workspace-page/);
+  assert.match(quizPageSource, /workspace-dashboard-header/);
+  assert.match(quizPageSource, /quiz-placeholder-card/);
+});
 
 test("study quiz cards render a tactile flip structure", () => {
   assert.match(quizPanelSource, /tactile-flip-card/);
@@ -29,4 +43,9 @@ test("study quiz deep links scroll to loaded quiz content", () => {
   assert.match(quizPanelSource, /quizContentRef/);
   assert.match(quizPanelSource, /ref=\{quizContentRef\}/);
   assert.match(quizPanelSource, /quizContentRef\.current\?\.scrollIntoView/);
+});
+
+test("quiz cards keep the shared dashboard card geometry", () => {
+  assert.match(globalsSource, /\.quiz-placeholder-card\s*\{[^}]*border-radius:\s*12px;/s);
+  assert.match(globalsSource, /\.tactile-question-card\s*\{[^}]*border:\s*1px solid #e5e5e5;/s);
 });

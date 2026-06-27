@@ -63,11 +63,21 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
   );
 
   return (
-    <main className="page workspace-page">
+    <main className="dashboard-redesign-container workspace-page">
+      <header className="workspace-dashboard-header">
+        <div>
+          <p className="eyebrow">Documents</p>
+          <h1>Documents</h1>
+        </div>
+        <div className="time-pill-selector" aria-label="Document library status">
+          <span className="time-pill active">Library</span>
+        </div>
+      </header>
+
       <section className="workspace-hero" aria-label="Documents overview">
         <div>
           <p className="eyebrow">Documents</p>
-          <h1>Study materials</h1>
+          <h2>Study materials</h2>
           <p>Upload PDF or TXT learning materials and keep them tied to your account.</p>
         </div>
         <aside className="workspace-hero-card">
@@ -94,7 +104,7 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
             warning={params.warning}
           />
           <div className="source-library-meter" aria-label="Source library size">
-            <span>Total shelf size</span>
+            <span>Library size</span>
             <strong>{formatFileSize(totalLibrarySize)}</strong>
           </div>
         </div>

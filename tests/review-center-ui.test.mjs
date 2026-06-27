@@ -16,6 +16,7 @@ const globalsSource = await readFile(
 );
 
 test("review center renders a history drawer workspace", () => {
+  assert.match(reviewCenterSource, /workspace-dashboard-header/);
   assert.match(reviewCenterSource, /review-drawer-shell/);
   assert.match(reviewCenterSource, /review-signal-rail/);
   assert.match(reviewCenterSource, /ReviewCenterSearch/);
@@ -63,4 +64,20 @@ test("review center mirrors the target AI review command rail", () => {
   assert.match(reviewCenterSource, /AI review lanes/);
   assert.match(reviewCenterSource, /review-command-card/);
   assert.match(reviewCenterSource, /review-signal-chip/);
+});
+
+test("review center keeps cards aligned with the dashboard redesign language", () => {
+  assert.match(globalsSource, /\.workspace-dashboard-header\s*\{/);
+  assert.match(globalsSource, /\.review-signal-rail\s*\{[^}]*border-radius:\s*12px;/s);
+  assert.match(globalsSource, /\.review-main-panel\s*\{[^}]*border-radius:\s*12px;/s);
+  assert.match(globalsSource, /\.review-command-card\s*\{[^}]*background:\s*linear-gradient/s);
+});
+
+test("review lane markers stay in normal flow so labels cannot overlap titles", () => {
+  assert.match(
+    globalsSource,
+    /\.review-workspace-column \.workspace-list-item\s*\{[^}]*gap:\s*0\.8rem;/s,
+  );
+  assert.match(globalsSource, /\.review-lane-marker\s*\{[^}]*position:\s*static;/s);
+  assert.match(globalsSource, /\.review-lane-marker\s*\{[^}]*width:\s*fit-content;/s);
 });

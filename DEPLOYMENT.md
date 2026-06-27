@@ -21,15 +21,14 @@ Required variables:
 - `NEXT_PUBLIC_SUPABASE_URL`: Public Supabase project URL.
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Public Supabase anon key used by Supabase
   Auth and RLS-scoped server clients.
-- `SUPABASE_SERVICE_ROLE_KEY`: Supabase service role key. Keep this server-only
-  and never expose it to client code. The current app does not use this key in
-  runtime code, but deployments commonly keep it available for controlled
-  operational tasks.
 
-Optional local/network variables:
+Optional local/network/operations variables:
 
 - `HTTP_PROXY`: Optional proxy used by the OpenAI-compatible HTTP client.
 - `HTTPS_PROXY`: Optional proxy used by the OpenAI-compatible HTTP client.
+- `SUPABASE_SERVICE_ROLE_KEY`: Optional server-only key for controlled
+  operational tasks outside the app runtime. The current app does not require it
+  and should not use it for user-facing requests.
 
 ## Supabase Setup
 
@@ -50,6 +49,7 @@ Expected application tables:
 - `document_chat_messages`
 - `document_quizzes`
 - `document_notes`
+- `document_flashcards`
 
 Pre-deploy blocker: the repository currently does not include the base migration
 that creates `documents` and `document_chunks` with their full select, insert,
@@ -66,6 +66,7 @@ Run migrations in timestamp order:
 3. `supabase/migrations/20260529_documents_delete_policy_v1.sql`
 4. `supabase/migrations/20260529_document_quizzes_v1.sql`
 5. `supabase/migrations/20260601_document_notes_v1.sql`
+6. `supabase/migrations/20260619_document_flashcards_v1.sql`
 
 Before running the checked-in migrations on a new database, apply or add the
 missing base schema migration for `documents` and `document_chunks`. The current
@@ -76,8 +77,9 @@ After migration, verify:
 - `documents` rows are scoped by `user_id = auth.uid()`.
 - `document_chunks` rows are accessible only through documents owned by the
   current user.
-- `document_chat_messages`, `document_quizzes`, and `document_notes` can only be
-  selected, inserted, and deleted by the owning user.
+- `document_chat_messages`, `document_quizzes`, `document_notes`, and
+  `document_flashcards` can only be selected, inserted, and deleted by the
+  owning user.
 - `match_document_chunks` exists and returns only chunks for the document ids
   passed by authenticated, user-scoped retrieval code.
 
@@ -137,8 +139,6 @@ specific production readiness check unless explicitly requested.
   `document_chunks`.
 - High: incomplete repository-visible RLS proof for `documents` and
   `document_chunks`.
-- Medium: `SUPABASE_SERVICE_ROLE_KEY` is documented as a deployment variable but
-  is not currently used by app runtime code.
 - Low: Node's test runner reports a `MODULE_TYPELESS_PACKAGE_JSON` warning for
   TypeScript ESM test imports. This is not known to block Next.js production
   builds.

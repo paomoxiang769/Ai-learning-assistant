@@ -6,8 +6,18 @@ const documentDetailSource = await readFile(
   new URL("../src/app/documents/[id]/page.tsx", import.meta.url),
   "utf8",
 );
+const workspaceTabsSource = await readFile(
+  new URL("../src/app/documents/[id]/document-workspace-tabs.tsx", import.meta.url),
+  "utf8",
+);
+const globalsSource = await readFile(
+  new URL("../src/app/globals.css", import.meta.url),
+  "utf8",
+);
 
 test("document detail page renders the workspace tab shell", () => {
+  assert.match(documentDetailSource, /dashboard-redesign-container document-workspace-page/);
+  assert.match(documentDetailSource, /workspace-dashboard-header/);
   assert.match(documentDetailSource, /DocumentWorkspaceTabs/);
   assert.match(documentDetailSource, /initialTab/);
   assert.match(documentDetailSource, /overviewContent/);
@@ -35,10 +45,6 @@ test("document detail page preserves quiz and note deep-link targets", () => {
 });
 
 test("document detail page wires the flashcards workspace tab", async () => {
-  const workspaceTabsSource = await readFile(
-    new URL("../src/app/documents/[id]/document-workspace-tabs.tsx", import.meta.url),
-    "utf8",
-  );
   const flashcardsPanelSource = await readFile(
     new URL("../src/app/documents/[id]/study-flashcards-panel.tsx", import.meta.url),
     "utf8",
@@ -60,4 +66,11 @@ test("document detail page wires the flashcards workspace tab", async () => {
 test("document detail page uses the shared delete confirmation UI", () => {
   assert.match(documentDetailSource, /DeleteDocumentForm/);
   assert.doesNotMatch(documentDetailSource, /<form action=.*delete/);
+});
+
+test("document detail tabs use the compact dashboard tab treatment", () => {
+  assert.match(workspaceTabsSource, /document-workspace-tablist/);
+  assert.match(globalsSource, /\.document-workspace-tabs\s*\{[^}]*border:\s*1px solid #e5e5e5;/s);
+  assert.match(globalsSource, /\.document-workspace-tablist\s*\{[^}]*border-radius:\s*9999px;/s);
+  assert.match(globalsSource, /\.document-workspace-tab\.is-active\s*\{[^}]*background:\s*#000000;/s);
 });

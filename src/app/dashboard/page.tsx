@@ -38,10 +38,7 @@ export default async function DashboardPage() {
       <header className="dashboard-redesign-header">
         <h1>Home</h1>
         <div className="time-pill-selector">
-          <button className="time-pill active" type="button">24h</button>
-          <button className="time-pill" type="button">7d</button>
-          <button className="time-pill" type="button">30d</button>
-          <button className="time-pill" type="button">90d</button>
+          <span className="time-pill active">Last 7 days</span>
         </div>
       </header>
 
@@ -50,7 +47,7 @@ export default async function DashboardPage() {
         <div className="get-started-steps-container">
           <div className="get-started-header">
             <h2>Get started</h2>
-            <button className="get-started-dismiss-btn" type="button">✕ Dismiss</button>
+            <span className="get-started-context">2 steps</span>
           </div>
           
           <div className="get-started-step">
@@ -134,7 +131,7 @@ export default async function DashboardPage() {
       {/* Search Section */}
       <DashboardGlobalSearch
         searchData={searchData}
-        placeholder="Search documents, notes, quizzes..."
+        placeholder="Search documents, notes, quizzes, flashcards..."
       />
 
       {/* Recommended Study Modes */}
@@ -180,7 +177,7 @@ export default async function DashboardPage() {
           <Link className="mode-card" href="/documents">
             <div className="mode-card-icon">🔍</div>
             <h3 className="mode-card-title">Global Search</h3>
-            <p className="mode-card-desc">Search documents, notes, and quizzes.</p>
+            <p className="mode-card-desc">Search documents, notes, quizzes, and flashcards.</p>
           </Link>
 
           <Link className="mode-card" href="/review">
@@ -189,23 +186,23 @@ export default async function DashboardPage() {
             <p className="mode-card-desc">Find topics most likely to need another pass.</p>
           </Link>
 
-          <div className="mode-card">
+          <Link className="mode-card" href="/dashboard">
             <div className="mode-card-icon">💓</div>
             <h3 className="mode-card-title">Learning Pulse</h3>
             <p className="mode-card-desc">View your study metrics and weekly actions.</p>
-          </div>
+          </Link>
 
-          <div className="mode-card">
+          <Link className="mode-card" href="/review">
             <div className="mode-card-icon">📡</div>
             <h3 className="mode-card-title">Study Signal Map</h3>
             <p className="mode-card-desc">View your active study signals.</p>
-          </div>
+          </Link>
 
-          <div className="mode-card">
+          <Link className="mode-card" href="/dashboard">
             <div className="mode-card-icon">⚙️</div>
             <h3 className="mode-card-title">Settings</h3>
-            <p className="mode-card-desc">Manage application configurations.</p>
-          </div>
+            <p className="mode-card-desc">Review local configuration and deployment readiness.</p>
+          </Link>
         </div>
       </section>
 
@@ -225,14 +222,13 @@ export default async function DashboardPage() {
       </section>
 
       {/* Sign Out at the Bottom */}
-      <footer style={{ marginTop: '1rem', borderTop: '1px solid #e5e5e5', paddingTop: '2rem' }}>
+      <footer className="dashboard-footer">
         <form action="/api/auth" method="post">
           <button
-            className="button secondary"
+            className="button secondary dashboard-sign-out-button"
             name="auth_action"
             value="logout"
             type="submit"
-            style={{ borderRadius: '6px', padding: '0.5rem 1rem', fontSize: '0.85rem' }}
           >
             Sign out
           </button>

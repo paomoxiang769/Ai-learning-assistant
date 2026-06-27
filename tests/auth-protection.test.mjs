@@ -29,6 +29,7 @@ test("isProtectedApiPath covers authenticated API namespaces", () => {
   assert.equal(isProtectedApiPath("/api/documents/document-1/delete"), true);
   assert.equal(isProtectedApiPath("/api/rag/answer"), true);
   assert.equal(isProtectedApiPath("/api/study/quiz"), true);
+  assert.equal(isProtectedApiPath("/api/study/search"), true);
   assert.equal(isProtectedApiPath("/api/chat/messages"), true);
   assert.equal(isProtectedApiPath("/api/auth"), false);
 });
