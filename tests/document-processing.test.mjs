@@ -57,6 +57,26 @@ test("extractDocumentText cold-starts when DOMMatrix cannot be polyfilled from n
   });
 });
 
+test("extractDocumentText configures a bundled PDF worker for serverless runtimes", async () => {
+  const script = `
+    const { PDFParse } = await import("pdf-parse");
+    const { extractDocumentText } = await import(${JSON.stringify(
+      new URL("../src/lib/document-processing.ts", import.meta.url).href,
+    )});
+    const pdfBytes = Buffer.from(${JSON.stringify(samplePdfBase64)}, "base64");
+    const file = new File([pdfBytes], "sample.pdf", { type: "application/pdf" });
+    await extractDocumentText(file);
+    const workerSrc = PDFParse.setWorker();
+    if (!workerSrc.startsWith("data:text/javascript")) {
+      throw new Error("Expected bundled PDF worker data URL, got " + workerSrc);
+    }
+  `;
+
+  await execFileAsync(process.execPath, ["--input-type=module", "-e", script], {
+    cwd: process.cwd(),
+  });
+});
+
 test("extractDocumentText rejects unsupported file types", async () => {
   const file = new File(["not supported"], "notes.md", {
     type: "text/markdown",

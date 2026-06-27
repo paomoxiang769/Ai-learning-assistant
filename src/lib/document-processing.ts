@@ -61,6 +61,9 @@ async function extractPdfText(file: File) {
   ensurePdfServerDomMatrix();
 
   const { PDFParse } = await import("pdf-parse");
+  const { getData } = await import("pdf-parse/worker");
+  PDFParse.setWorker(getData());
+
   const buffer = Buffer.from(await file.arrayBuffer());
   const parser = new PDFParse({ data: buffer });
 
